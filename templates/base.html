@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Restaurant App{% endblock %}</title>
+
+    <!-- Bootstrap CSS & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- Animate.css for animations -->
+    <link href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css" rel="stylesheet">
+
+    <style>
+        /* Body & Layout */
+        body {
+            background: #f0f2f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        /* Sidebar */
+        #sidebar {
+            min-width: 220px;
+            max-width: 220px;
+            background: linear-gradient(180deg, #0d6efd, #6610f2);
+            color: #fff;
+            transition: all 0.3s;
+            min-height: 100vh;
+            position: fixed;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #sidebar .nav-link {
+            color: #fff;
+            padding: 10px 15px;
+            margin-bottom: 0.3rem;
+            border-radius: 0.5rem;
+            transition: all 0.3s;
+        }
+
+        #sidebar .nav-link:hover {
+            background: rgba(255, 255, 255, 0.15);
+            padding-left: 1.5rem;
+        }
+
+        #sidebar .nav-link.active {
+            background: #ffc107;
+            color: #000;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        /* Main content */
+        main {
+            flex: 1;
+            padding: 25px;
+            margin-left: 220px;
+            transition: all 0.3s;
+        }
+
+        /* Header / Breadcrumb */
+        .page-header {
+            background: rgba(255,255,255,0.95);
+            padding: 25px;
+            margin-bottom: 25px;
+            border-radius: 1rem;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+        }
+
+        .breadcrumb a {
+            text-decoration: none;
+        }
+
+        /* Cards */
+        .card {
+            border-radius: 1rem;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            backdrop-filter: blur(5px);
+            background: rgba(255,255,255,0.85);
+        }
+
+        .card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+
+        /* Table hover */
+        table.table-hover tbody tr:hover {
+            background-color: rgba(13,110,253,0.1);
+        }
+
+        /* Flash messages */
+        .alert {
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 40px;
+            padding: 20px 0;
+            background: linear-gradient(90deg, #0d6efd, #6610f2);
+            color: #fff;
+            text-align: center;
+            flex-shrink: 0;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.1);
+        }
+
+        /* Buttons gradient */
+        .btn-gradient {
+            background: linear-gradient(90deg, #0d6efd, #6610f2);
+            color: #fff;
+            border: none;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+
+        .btn-gradient:hover {
+            background: linear-gradient(90deg, #6610f2, #0d6efd);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+            transform: translateY(-2px);
+        }
+
+        /* Responsive sidebar */
+        @media (max-width: 991px) {
+            #sidebar {
+                margin-left: -220px;
+                position: fixed;
+            }
+            #sidebar.show {
+                margin-left: 0;
+            }
+            main {
+                margin-left: 0;
+            }
+        }
+
+        /* Sidebar toggle button */
+        .sidebar-toggle {
+            border: none;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<nav id="sidebar" class="d-flex flex-column p-3 bg-dark vh-100 text-white">
+    <!-- Logo / Titre -->
+    <a href="{{ url_for('dashboard.index') }}" class="d-flex align-items-center mb-3 mb-md-0 text-white text-decoration-none">
+        <i class="bi bi-egg-fried fs-3 me-2"></i>
+        <span class="fs-5 fw-bold">Restaurant App</span>
+    </a>
+    <hr class="text-white">
+
+    <!-- Menu principal -->
+    <ul class="nav nav-pills flex-column mb-auto">
+        <li class="nav-item">
+            <a href="{{ url_for('dashboard.index') }}" class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}">
+                <i class="bi bi-speedometer2 me-2"></i> Tableau de bord
+            </a>
+        </li>
+
+        <!-- Clients -->
+        <li>
+            <a href="{{ url_for('client.liste_client') }}" class="nav-link {% if request.endpoint.startswith('client') %}active{% endif %}">
+                <i class="bi bi-people-fill me-2"></i> Clients
+            </a>
+        </li>
+
+        <!-- Catégories -->
+        <li>
+            <a href="{{ url_for('categorie.liste_categorie') }}" class="nav-link {% if request.endpoint.startswith('categorie') %}active{% endif %}">
+                <i class="bi bi-tags-fill me-2"></i> Catégories
+            </a>
+        </li>
+
+        <!-- Plats -->
+        <li>
+            <a href="{{ url_for('plat.liste_plats') }}" class="nav-link {% if request.endpoint.startswith('plat') %}active{% endif %}">
+                <i class="bi bi-basket-fill me-2"></i> Plats
+            </a>
+        </li>
+
+        <!-- Plats réservés -->
+        <li>
+            <a href="{{ url_for('reservation_items.list_reservation_items') }}" class="nav-link {% if request.endpoint.startswith('reservation_items') %}active{% endif %}">
+                <i class="bi bi-list-ul me-2"></i> Plats réservés
+            </a>
+        </li>
+
+        <!-- Clients servis -->
+        <li>
+            <a href="{{ url_for('reservation_public.clients_servis') }}" class="nav-link {% if request.endpoint.startswith('reservation_public.clients_servis') %}active{% endif %}">
+                <i class="bi bi-check2-circle me-2"></i> Clients servis
+            </a>
+        </li>
+
+        <!-- Réservations -->
+        <li>
+            <a href="{{ url_for('reservation.liste_reservations') }}" class="nav-link {% if request.endpoint.startswith('reservation') %}active{% endif %}">
+                <i class="bi bi-calendar-check-fill me-2"></i> Réservations
+            </a>
+        </li>
+
+        <!-- Scanner QR -->
+        <li>
+            <a href="{{ url_for('reservation_public.scanner_page') }}" class="nav-link {% if request.endpoint.startswith('reservation_public.scanner_page') %}active{% endif %}">
+                <i class="bi bi-qr-code-scan me-2"></i> Scanner QR
+            </a>
+        </li>
+
+        <!-- Menu utilisateurs -->
+        <li>
+            <a href="{{ url_for('plats_public.afficher_menu') }}" class="nav-link {% if request.endpoint.startswith('plats_public.afficher_menu') %}active{% endif %}">
+                <i class="bi bi-card-list me-2"></i> Menu utilisateurs
+            </a>
+        </li>
+    </ul>
+
+    <hr class="text-white mt-auto">
+    <div class="text-center">
+        <small>&copy; 2025 Restaurant App</small>
+    </div>
+</nav>
+
+
+<!-- Main Content -->
+<main>
+    <!-- Toggle button for small screens -->
+    <button class="btn btn-gradient d-lg-none mb-3 sidebar-toggle" id="sidebarToggle">
+        <i class="bi bi-list"></i> Menu
+    </button>
+
+    <!-- Page header / Breadcrumb -->
+    <div class="page-header mb-4 animate__animated animate__fadeInDown">
+        <h2 class="fw-bold mb-1">{% block page_title %}Dashboard{% endblock %}</h2>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb mb-0">
+                <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Accueil</a></li>
+                {% block breadcrumb %}{% endblock %}
+            </ol>
+        </nav>
+    </div>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show animate__animated animate__fadeIn" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+</main>
+
+<!-- Footer -->
+<footer>
+    <p class="mb-0">&copy; 2025 - Restaurant App | Tous droits réservés</p>
+</footer>
+
+<!-- Scripts Bootstrap & Sidebar toggle -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const sidebar = document.getElementById('sidebar');
+    sidebarToggle.addEventListener('click', () => {
+        sidebar.classList.toggle('show');
+    });
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

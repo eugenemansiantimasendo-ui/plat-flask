@@ -1,0 +1,135 @@
+{% extends "base.html" %}
+
+{% block title %}Modifier un plat{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="card shadow-lg border-0 rounded-5 mx-auto" style="max-width: 700px; transition: transform 0.3s;">
+        <div class="card-header bg-gradient-primary text-white text-center py-4 position-relative">
+            <h3 class="mb-0"><i class="bi bi-pencil-square animate__animated animate__pulse animate__infinite"></i> Modifier le plat</h3>
+            <small class="position-absolute top-100 start-50 translate-middle-x text-white-50 mt-2">Mettez à jour les informations du plat</small>
+        </div>
+        <div class="card-body p-5">
+            <form method="POST" enctype="multipart/form-data">
+
+                <!-- Nom du plat -->
+                <div class="mb-4">
+                    <label for="nom" class="form-label fw-semibold">Nom du plat</label>
+                    <input type="text" class="form-control form-control-lg shadow-sm rounded-3" id="nom" name="nom" value="{{ plat.nom }}" placeholder="Entrez le nom du plat" required>
+                </div>
+
+                <!-- Description -->
+                <div class="mb-4">
+                    <label for="description" class="form-label fw-semibold">Description</label>
+                    <textarea class="form-control form-control-lg shadow-sm rounded-3" id="description" name="description" rows="4" placeholder="Décrivez le plat">{{ plat.description }}</textarea>
+                </div>
+
+                <!-- Catégorie -->
+                <div class="mb-4">
+                    <label for="categorie" class="form-label fw-semibold">Catégorie</label>
+                    <select class="form-select form-select-lg shadow-sm rounded-3" id="categorie" name="categorie_id" required>
+                        {% for cat in categories %}
+                            <option value="{{ cat.categorie_id }}" {% if plat.categorie_id == cat.categorie_id %}selected{% endif %}>
+                                {{ cat.nom }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Prix -->
+                <div class="mb-4">
+                    <label for="prix" class="form-label fw-semibold">Prix</label>
+                    <input type="number" step="0.01" class="form-control form-control-lg shadow-sm rounded-3" id="prix" name="prix" value="{{ plat.prix }}" placeholder="Entrez le prix" required>
+                </div>
+
+                <!-- Image actuelle -->
+                <div class="mb-4 text-center">
+                    <label class="form-label fw-semibold">Image actuelle</label><br>
+                    {% if plat.image_url %}
+                        <img src="{{ url_for('static', filename='uploads/' ~ plat.image_url) }}" alt="Image du plat" class="img-thumbnail mb-3 shadow-sm" width="200">
+                    {% else %}
+                        <p class="text-muted">Aucune image</p>
+                    {% endif %}
+                </div>
+
+                <!-- Nouvelle image avec prévisualisation -->
+                <div class="mb-5">
+                    <label for="image" class="form-label fw-semibold">Nouvelle image (optionnel)</label>
+                    <input type="file" class="form-control shadow-sm rounded-3" id="image" name="image" accept="image/*" onchange="previewImage(event)">
+                    <div class="mt-3 text-center">
+                        <img id="imagePreview" src="#" alt="Prévisualisation" class="img-fluid rounded shadow-sm d-none" style="max-height:200px; transition: all 0.3s;">
+                    </div>
+                </div>
+
+                <!-- Boutons -->
+                <div class="d-flex justify-content-center gap-4">
+                    <button type="submit" class="btn btn-gradient-primary btn-lg shadow-lg text-white fw-bold" style="border-radius:50px;">
+                        <i class="bi bi-save-fill"></i> Mettre à jour
+                    </button>
+                    <a href="{{ url_for('plat.liste_plats') }}" class="btn btn-secondary btn-lg shadow-sm" style="border-radius:50px;">Annuler</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Script de prévisualisation de l'image -->
+<script>
+    function previewImage(event) {
+        const input = event.target;
+        const preview = document.getElementById('imagePreview');
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.classList.remove('d-none');
+            }
+            reader.readAsDataURL(input.files[0]);
+        } else {
+            preview.src = '#';
+            preview.classList.add('d-none');
+        }
+    }
+</script>
+
+<style>
+    /* Dégradé bleu-violet pour le header */
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #4e54c8, #8f94fb);
+    }
+
+    /* Inputs et selects hover */
+    .form-control:hover, .form-select:hover {
+        border-color: #8f94fb;
+        box-shadow: 0 0 8px rgba(143,148,251,0.3);
+        transition: all 0.3s;
+    }
+
+    /* Boutons dégradés */
+    .btn-gradient-primary {
+        background: linear-gradient(90deg, #4e54c8, #8f94fb);
+        border: none;
+        transition: all 0.3s;
+    }
+    .btn-gradient-primary:hover {
+        background: linear-gradient(90deg, #8f94fb, #4e54c8);
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+    }
+
+    /* Card hover */
+    .card:hover {
+        transform: translateY(-5px);
+    }
+
+    /* Animation pour l'icône */
+    @keyframes pulseIcon {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+        100% { transform: scale(1); }
+    }
+    .animate__pulse {
+        animation: pulseIcon 1.5s infinite;
+    }
+</style>
+{% endblock %}

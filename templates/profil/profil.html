@@ -1,0 +1,115 @@
+{% extends "plat/base_client.html" %}
+
+{% block title %}Mon Profil{% endblock %}
+
+{% block content %}
+
+<!-- ====== CSS direct dans le HTML ====== -->
+<style>
+/* ----------------- Cartes profil ----------------- */
+.card {
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Header des cartes */
+.card-header {
+    font-weight: 600;
+    font-size: 1.3rem;
+    letter-spacing: 0.5px;
+}
+
+/* ----------------- Avatar ----------------- */
+.card-body img.rounded-circle {
+    border: 4px solid #fff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    width: 120px;
+    height: 120px;
+    object-fit: cover;
+    margin-bottom: 1rem;
+}
+
+/* ----------------- Liste d’infos ----------------- */
+.list-group-item {
+    font-size: 1rem;
+    padding: 0.75rem 1.25rem;
+    border: none;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.list-group-item:last-child {
+    border-bottom: none;
+}
+
+/* ----------------- Boutons ----------------- */
+.btn-success, .btn-secondary {
+    border-radius: 50px;
+    padding: 0.5rem 1.5rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn-success:hover, .btn-secondary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+/* ----------------- Responsive ----------------- */
+@media (max-width: 576px) {
+    .card-body ul.list-group {
+        text-align: center;
+    }
+    .d-flex.justify-content-between {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+}
+</style>
+<!-- ====== Fin CSS ====== -->
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white d-flex align-items-center">
+                    <i class="bi bi-person-circle me-2"></i>
+                    <h4 class="mb-0">Mon Profil</h4>
+                </div>
+                <div class="card-body text-center">
+
+                    {% if client %}
+                     <img 
+    src="https://ui-avatars.com/api/?name={{ client.nom[0] }}{{ client.prenom[0] }}&background={{ ['007bff','28a745','ffc107','dc3545','6f42c1','20c997'] | random }}&color=fff&rounded=true&size=120"
+    alt="Avatar" 
+    class="rounded-circle mb-4">
+
+
+
+                        <ul class="list-group list-group-flush text-start mb-4">
+                            <li class="list-group-item"><i class="bi bi-person-fill me-2"></i><strong>Nom :</strong> {{ client.nom }}</li>
+                            <li class="list-group-item"><i class="bi bi-envelope-fill me-2"></i><strong>Email :</strong> {{ client.email }}</li>
+                            <li class="list-group-item"><i class="bi bi-telephone-fill me-2"></i><strong>Téléphone :</strong> {{ client.telephone }}</li>
+                            {% if client.date_inscription %}
+                                <li class="list-group-item"><i class="bi bi-calendar-check-fill me-2"></i><strong>Date d'inscription :</strong> {{ client.date_inscription.strftime('%d/%m/%Y') }}</li>
+                            {% endif %}
+                        </ul>
+
+                        <!-- ✅ Bouton vers modification du profil utilisateur -->
+                        <a href="{{ url_for('client.modifier_profil') }}" class="btn btn-success">
+                            <i class="bi bi-pencil-square me-1"></i> Modifier mon profil
+                        </a>
+                    {% else %}
+                        <p class="text-danger">Client non trouvé.</p>
+                    {% endif %}
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+
+{% endblock %}

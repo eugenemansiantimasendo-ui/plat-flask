@@ -1,0 +1,591 @@
+{% extends "plat/base_client.html" %}
+
+{% block title %}Menu Restaurant{% endblock %}
+
+{% block content %}
+<h1 class="text-center mb-4 text-animate">Menu du Restaurant</h1>
+
+<!-- Onglets catégories -->
+<div class="text-center mb-4">
+  <button class="btn btn-outline-primary categorie-btn categorie-active" data-cat="all">Tous les plats</button>
+  {% for cat in categories %}
+    <button class="btn btn-outline-secondary categorie-btn" data-cat="{{ cat.categorie_id }}">{{ cat.nom }}</button>
+  {% endfor %}
+</div>
+
+<!-- Liste des plats -->
+<div id="menu" class="d-flex flex-wrap justify-content-center">
+  {% for plat in plats %}
+    <div class="card m-2 p-2" style="width: 200px;" data-categorie="{{ plat.categorie.categorie_id if plat.categorie else '0' }}">
+      <img src="{{ url_for('static', filename='uploads/' ~ (plat.image_url or 'default.jpg')) }}" 
+           alt="{{ plat.nom }}" class="card-img-top" style="height:220px; object-fit:cover; border-radius:8px;">
+      
+      <div class="card-body p-2" style="flex: 0 0 auto; min-height: 80px;">
+        <h5 class="card-title" style="font-size: 1rem; margin-bottom:2px;">{{ plat.nom }}</h5>
+
+        {% set moyenne = (plat.avis|map(attribute='note')|sum / (plat.avis|length)) if plat.avis else 0 %}
+        <div class="mb-1 d-flex align-items-center moyenne-avis" 
+             id="moyenne-{{ plat.id_plat }}" 
+             data-total-notes="{{ plat.avis|map(attribute='note')|sum }}" 
+             data-nb-avis="{{ plat.avis|length }}">
+          {% for i in range(1,6) %}
+            {% if i <= moyenne %}
+              <span style="color:gold; font-size:1rem;">&#9733;</span>
+            {% else %}
+              <span style="color:#ccc; font-size:1rem;">&#9733;</span>
+            {% endif %}
+          {% endfor %}
+          <small class="ms-1 text-muted nb-avis">({{ plat.avis|length }} avis)</small>
+        </div>
+
+        <p class="card-text text-truncate" style="font-size:0.8rem; margin-bottom:5px;">{{ plat.description }}</p>
+        <p style="font-size:0.9rem; margin-bottom:5px;"><strong>Prix: ${{ '%.2f'|format(plat.prix) }}</strong></p>
+
+        <!-- Dernier avis -->
+        <div class="mb-2 avis-list" id="avis-list-{{ plat.id_plat }}" style="font-size:0.75rem;">
+          {% if plat.avis %}
+            {% set dernier_avis = plat.avis[-1] %}
+            <div class="border-top pt-1 mt-1">
+              <strong>{{ dernier_avis.client.nom.split()[-1] if dernier_avis.client else "Anonyme" }}</strong>
+              {% for i in range(1,6) %}
+                {% if i <= dernier_avis.note %}
+                  <span style="color:gold;">&#9733;</span>
+                {% else %}
+                  <span style="color:#ccc;">&#9733;</span>
+                {% endif %}
+              {% endfor %} :
+              <span>{{ dernier_avis.commentaire }}</span><br>
+              <small class="text-muted">{{ dernier_avis.date_avis.strftime('%d/%m/%Y %H:%M') }}</small>
+            </div>
+
+            <small class="text-primary d-block mt-1" style="cursor:pointer;"
+                   onclick="ouvrirModalAvis({{ plat.id_plat }})">
+              (Voir tous les {{ plat.avis|length }} avis)
+            </small>
+          {% else %}
+            <em>Aucun avis pour ce plat.</em>
+          {% endif %}
+        </div>
+
+        <!-- Formulaire AJAX -->
+        {% if session.get('client_id') %}
+          <form class="d-flex flex-column avis-form mb-2" data-plat-id="{{ plat.id_plat }}">
+            <div class="d-flex align-items-center mb-1" style="gap:5px;">
+              <label class="form-label mb-0" style="font-size:0.75rem;">Votre note:</label>
+              <div class="star-rating" data-target="note_{{ plat.id_plat }}">
+                {% for i in range(1,6) %}
+                  <span class="star" data-value="{{ i }}" style="font-size:0.9rem; cursor:pointer;">&#9733;</span>
+                {% endfor %}
+              </div>
+              <input type="hidden" name="note" id="note_{{ plat.id_plat }}" required>
+            </div>
+            <textarea name="commentaire" class="form-control form-control-sm mb-1" rows="1" placeholder="Votre commentaire" style="font-size:0.75rem;"></textarea>
+            <button type="submit" class="btn btn-primary btn-sm" style="font-size:0.75rem;">Ajouter</button>
+          </form>
+        {% else %}
+          <small class="text-muted">Connectez-vous pour laisser un avis.</small>
+        {% endif %}
+
+        <!-- Ajouter au panier -->
+        <div class="mt-3 d-flex justify-content-between align-items-center">
+          <input type="number" min="1" value="1" id="quantite_modal_{{ plat.id_plat }}" class="form-control form-control-sm" style="width:60px;">
+          <button class="btn btn-success btn-sm" 
+                  onclick="ajouterPanier({{ plat.id_plat }}, '{{ plat.nom|escapejs }}', {{ plat.prix }}, 'modal')">
+            <i class="bi bi-cart-plus-fill"></i> Ajouter
+          </button>
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
+
+<!-- Modal unique avec filtrage, tri et pagination -->
+<div class="modal fade" id="modalAvisUnique" tabindex="-1" aria-labelledby="modalAvisUniqueLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="modalAvisUniqueLabel">
+          Avis <span id="filtreActifBadge" class="badge bg-primary ms-2" style="display:none;">0</span>
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Filtrage et tri -->
+        <div class="mb-2 d-flex gap-2 flex-wrap">
+          <div style="flex:1;">
+            <label for="filterNote" class="form-label">Filtrer par note :</label>
+            <select id="filterNote" class="form-select form-select-sm" onchange="afficherAvis()">
+              <option value="all">Tous</option>
+              <option value="5">5 étoiles</option>
+              <option value="4">4 étoiles</option>
+              <option value="3">3 étoiles</option>
+              <option value="2">2 étoiles</option>
+              <option value="1">1 étoile</option>
+            </select>
+          </div>
+          <div style="flex:2;">
+            <label for="filterKeyword" class="form-label">Filtrer par mot-clé :</label>
+            <input type="text" id="filterKeyword" class="form-control form-control-sm" placeholder="Rechercher..." oninput="afficherAvis()">
+          </div>
+          <div style="flex:1;">
+            <label for="sortDate" class="form-label">Trier par date :</label>
+            <select id="sortDate" class="form-select form-select-sm" onchange="afficherAvis()">
+              <option value="desc">Récent → Ancien</option>
+              <option value="asc">Ancien → Récent</option>
+            </select>
+          </div>
+        </div>
+        <div id="modalAvisBody" class="mt-2"></div>
+        <nav>
+          <ul class="pagination justify-content-center mt-2" id="paginationAvis"></ul>
+        </nav>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const platsAvis = {
+    {% for plat in plats %}
+      {{ plat.id_plat }}: [
+        {% for avis in plat.avis %}
+          {
+            nom: "{{ avis.client.nom.split()[-1] if avis.client else 'Anonyme' }}",
+            note: {{ avis.note }},
+            commentaire: "{{ avis.commentaire|escapejs }}",
+            date: "{{ avis.date_avis.strftime('%d/%m/%Y %H:%M') }}"
+          },
+        {% endfor %}
+      ],
+    {% endfor %}
+  };
+
+  let avisActuels = [];
+  let avisParPage = 5;
+  let pageCourante = 1;
+
+  function ouvrirModalAvis(id_plat) {
+    avisActuels = platsAvis[id_plat];
+    pageCourante = 1;
+    document.getElementById('filterNote').value = 'all';
+    document.getElementById('filterKeyword').value = '';
+    document.getElementById('sortDate').value = 'desc';
+    afficherAvis();
+    new bootstrap.Modal(document.getElementById('modalAvisUnique')).show();
+  }
+
+  function afficherAvis(page = 1) {
+    const body = document.getElementById('modalAvisBody');
+    const filtreNote = document.getElementById('filterNote').value;
+    const keyword = document.getElementById('filterKeyword').value.toLowerCase();
+    const sortDate = document.getElementById('sortDate').value;
+    const badge = document.getElementById('filtreActifBadge');
+    pageCourante = page;
+
+    body.innerHTML = '';
+
+    let avisFiltres = [...avisActuels];
+
+    // Filtrage par note
+    if (filtreNote !== 'all') {
+      avisFiltres = avisFiltres.filter(a => a.note == parseInt(filtreNote));
+    }
+
+    // Filtrage par mot-clé
+    if (keyword) {
+      avisFiltres = avisFiltres.filter(a => a.commentaire.toLowerCase().includes(keyword));
+    }
+
+    // Tri par date
+    avisFiltres.sort((a, b) => {
+      const dateA = new Date(a.date.split('/').reverse().join('-'));
+      const dateB = new Date(b.date.split('/').reverse().join('-'));
+      return sortDate === 'asc' ? dateA - dateB : dateB - dateA;
+    });
+
+    // Badge filtres actifs
+    const filtresActifs = (filtreNote !== 'all' ? 1 : 0) + (keyword ? 1 : 0);
+    badge.style.display = filtresActifs > 0 ? 'inline-block' : 'none';
+    badge.innerText = filtresActifs;
+
+    // Pagination
+    const totalPages = Math.ceil(avisFiltres.length / avisParPage);
+    const debut = (pageCourante - 1) * avisParPage;
+    const fin = debut + avisParPage;
+    const avisPage = avisFiltres.slice(debut, fin);
+
+    if (avisPage.length === 0) {
+      body.innerHTML = '<em>Aucun avis correspondant.</em>';
+    } else {
+      avisPage.forEach(a => {
+        body.innerHTML += `
+          <div class="border-bottom pb-2 mb-2">
+            <strong>${a.nom}</strong>
+            ${'&#9733;'.repeat(a.note)}${'&#9733;'.repeat(5-a.note)}
+            <br>
+            <span>${a.commentaire}</span><br>
+            <small class="text-muted">${a.date}</small>
+          </div>
+        `;
+      });
+    }
+
+    // Pagination HTML
+    const pagination = document.getElementById('paginationAvis');
+    pagination.innerHTML = '';
+    for (let i = 1; i <= totalPages; i++) {
+      const li = document.createElement('li');
+      li.className = 'page-item' + (i === pageCourante ? ' active' : '');
+      li.innerHTML = `<a class="page-link" href="#" onclick="afficherAvis(${i}); return false;">${i}</a>`;
+      pagination.appendChild(li);
+    }
+  }
+</script>
+
+
+
+<!-- Panier flottant -->
+<div id="panier" class="shadow p-3 bg-white rounded">
+  <h5>Mon Panier</h5>
+  <div id="panier-items"></div> <!-- Les articles ajoutés s'affichent ici -->
+  <hr>
+  <div class="d-flex justify-content-between">
+    <strong>Total :</strong> 
+    <strong>$<span id="total">0.00</span></strong> <!-- Total du panier -->
+  </div>
+  <button class="btn btn-success w-100 mt-2" data-bs-toggle="modal" data-bs-target="#clientModal">
+    Valider
+  </button>
+</div>
+<!-- Modal client -->
+<div class="modal fade" id="clientModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title">Valider votre commande</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <!-- Formulaire client -->
+          <div class="col-md-6">
+            <form id="clientForm" onsubmit="return false;">
+              <div class="mb-3">
+                <label for="client-nom">Nom complet</label>
+                <input type="text" class="form-control" id="client-nom"
+                       value="{{ (client.nom | default('')) ~ ' ' ~ (client.prenom | default('')) if client else '' }}"
+                       {% if client %} readonly {% endif %} required>
+              </div>
+              <div class="mb-3">
+                <label for="client-email">Email</label>
+                <input type="email" class="form-control" id="client-email"
+                       value="{{ client.email | default('') if client else '' }}"
+                       {% if client %} readonly {% endif %} required>
+              </div>
+              <div class="mb-3">
+                <label for="client-tel">Téléphone</label>
+                <input type="text" class="form-control" id="client-tel"
+                       value="{{ client.telephone | default('') if client else '' }}"
+                       {% if client %} readonly {% endif %} required>
+              </div>
+            </form>
+          </div>
+
+          <!-- Résumé du panier -->
+          <div class="col-md-6">
+            <h6>Résumé du panier</h6>
+            <div id="panier-items-modal" style="max-height:300px; overflow-y:auto;"></div>
+            <hr>
+            <div class="d-flex justify-content-between">
+              <strong>Total :</strong> <strong>$ <span id="total-modal">0.00</span></strong>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer modal -->
+      <div class="modal-footer d-flex justify-content-between">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        <button class="btn btn-info" onclick="imprimerCommandeModal()">🖨 Imprimer</button>
+        <button class="btn btn-success" onclick="validerCommandeModal()">✅ Valider et télécharger PDF</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+{% endblock %}
+
+{% block styles %}
+<style>
+  /* Card menu */
+#menu .card {
+    width: 200px;          /* largeur de la carte */
+    margin-bottom: 15px;
+    border-radius: 8px;
+    transition: 0.3s;
+}
+
+#menu .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+}
+
+/* Image plus grande */
+#menu .card img {
+    height: 220px;         /* hauteur de l'image */
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+/* Bloc texte plus compact */
+#menu .card-body {
+    padding: 5px;          /* réduire padding */
+    min-height: 70px;      /* réduire hauteur minimum */
+}
+
+/* Titres et descriptions plus petits */
+#menu .card-title {
+    font-size: 0.9rem;     /* titre plus petit */
+    margin-bottom: 2px;
+}
+
+#menu .card-text {
+    font-size: 0.75rem;    /* description plus petite */
+    margin-bottom: 2px;
+    white-space: nowrap;   /* une seule ligne si tu veux très compact */
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Prix plus compact */
+#menu .card-body p {
+    font-size: 0.8rem;
+    margin-bottom: 2px;
+}
+
+/* Quantité et bouton plus petits */
+#menu .card-body input[type="number"] {
+    width: 45px;
+    font-size: 0.75rem;
+}
+
+#menu .card-body button {
+    padding: 0.2rem 0.4rem;
+    font-size: 0.75rem;
+}
+
+
+  .hide { display: none !important; }
+  #panier {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    width: 260px;
+    z-index: 1050;
+    border: 1px solid #ddd;
+  }
+  @media (max-width: 576px) {
+    #panier { width: 90%; right:5%; bottom: 10px; }
+    #menu .card { width: 45% !important; }
+  }
+  #menu .card { margin-bottom: 15px; border-radius:8px; transition: 0.3s; }
+  #menu .card:hover { transform: translateY(-2px); box-shadow: 0 3px 10px rgba(0,0,0,0.2);}
+</style>
+{% endblock %}
+
+{% block scripts %}
+
+<script>
+let panier = [];
+
+// Charger panier depuis Flask
+fetch("{{ url_for('reservation_public.panier_actuel') }}")
+  .then(res => res.json())
+  .then(data => { 
+      panier = Array.isArray(data) ? data : []; 
+      afficherPanier(); 
+  })
+  .catch(() => { 
+      panier = []; 
+      afficherPanier(); 
+  });
+
+function ajouterPanier(id, nom, prix, source='main') {
+    let quantite = 1;
+    if(source === 'modal') {
+        const inputModal = document.getElementById(`quantite_modal_${id}`);
+        quantite = inputModal ? parseInt(inputModal.value) || 1 : 1;
+    } else {
+        const quantiteInput = document.getElementById(`quantite_${id}`);
+        quantite = quantiteInput ? parseInt(quantiteInput.value) || 1 : 1;
+    }
+
+    const existant = panier.find(i => i.id === id);
+    if (existant) existant.quantite += quantite;
+    else panier.push({ id, nom, prix, quantite });
+
+    afficherPanier();
+    sauvegarderPanier();
+}
+
+function afficherPanier(){
+  const panierDiv = document.getElementById('panier-items');
+  panierDiv.innerHTML = '';
+  let total = 0, totalArticles = 0;
+
+  panier.forEach(item => {
+    total += item.prix * item.quantite;
+    totalArticles += item.quantite;
+
+    const div = document.createElement('div');
+    div.className = 'd-flex justify-content-between align-items-center mb-1';
+    div.innerHTML = `
+        <span>${item.nom} x ${item.quantite}</span>
+        <span>$${(item.prix*item.quantite).toFixed(2)}</span>
+        <button class="btn btn-sm btn-danger ms-2" onclick="supprimerItem(${item.id})">X</button>
+    `;
+    panierDiv.appendChild(div);
+  });
+
+  document.getElementById('total').innerText = total.toFixed(2);
+  document.getElementById('total-modal').innerText = total.toFixed(2);
+  document.getElementById('panier-items-modal').innerHTML = panierDiv.innerHTML;
+  document.querySelector('#panier h5').innerText = `Mon Panier (${totalArticles})`;
+}
+
+function supprimerItem(id) {
+    if (id === undefined || id === null) return;
+    panier = panier.filter(i => i.id !== id);
+    afficherPanier();
+    sauvegarderPanier();
+}
+
+// Exemple pour sauvegarder et afficher le panier
+function sauvegarderPanier() {
+    fetch("{{ url_for('reservation_public.sauvegarder_panier') }}", {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(panier)
+    })
+    .then(res => res.json())  // Maintenant on reçoit un vrai JSON
+    .then(data => {
+        if(data.success){
+            console.log("Panier sauvegardé :", data.panier);
+        } else {
+            console.error("Erreur sauvegarde :", data.message);
+        }
+    })
+    .catch(err => console.error("Erreur fetch :", err));
+}
+
+
+function synchroniserPanierModal() {
+    document.getElementById('panier-items-modal').innerHTML = document.getElementById('panier-items').innerHTML;
+    document.getElementById('total-modal').innerText = document.getElementById('total').innerText;
+}
+
+function validerCommandeModal() {
+    // Récupérer les valeurs depuis le modal
+    let nom = document.getElementById("client-nom").value.trim();
+    let email = document.getElementById("client-email").value.trim();
+    let tel = document.getElementById("client-tel").value.trim();
+
+    // Vérifier que tous les champs sont remplis
+    if (!nom || !email || !tel) {
+        alert("Tous les champs sont obligatoires !");
+        return;
+    }
+
+    // Vérifier que le panier n'est pas vide
+    if (panier.length === 0) {
+        alert("Votre panier est vide !");
+        return;
+    }
+
+    // Envoyer les données au serveur
+    fetch("{{ url_for('reservation_public.ajouter_commande_multiple') }}", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: new URLSearchParams({
+            nom_client: nom,
+            email_client: email,
+            tel_client: tel,
+            commande_data: JSON.stringify(panier)
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (!data.success) {
+            alert("Erreur : " + data.message);
+            return;
+        }
+        if (data.reservation_id) {
+            // Rediriger vers le ticket
+            window.location.href = `/reservation-public/ticket/${data.reservation_id}`;
+        } else {
+            console.error("reservation_id manquant dans la réponse !");
+        }
+    })
+    .catch(err => alert("Erreur : " + err));
+}
+
+
+function imprimerCommandeModal() {
+    synchroniserPanierModal();
+    const nom = document.getElementById("client-nom").value.trim();
+    const email = document.getElementById("client-email").value.trim();
+    const tel = document.getElementById("client-tel").value.trim();
+
+    if(!nom || !email || !tel){ alert("Tous les champs sont obligatoires !"); return; }
+    if(panier.length===0){ alert("Votre panier est vide !"); return; }
+
+    fetch("{{ url_for('reservation_public.ajouter_commande_multiple') }}",{
+        method:"POST",
+        headers:{"Content-Type":"application/x-www-form-urlencoded"},
+        body:new URLSearchParams({nom_client: nom, email_client: email, tel_client: tel, commande_data: JSON.stringify(panier)})
+    })
+    .then(res=>res.json())
+    .then(data=>{
+        if(!data.success){ alert("Erreur : "+data.message); return; }
+        if (data.reservation_id) window.open(`/reservation-public/ticket/${data.reservation_id}`, '_blank');
+        else console.error("reservation_id manquant dans la réponse !");
+    })
+    .catch(err=>alert("Erreur : "+err));
+}
+
+// Filtrage catégories
+document.querySelectorAll('.categorie-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.categorie-btn').forEach(b=>b.classList.remove('categorie-active'));
+    btn.classList.add('categorie-active');
+    const cat = btn.getAttribute('data-cat');
+    document.querySelectorAll('#menu .card').forEach(card=>{
+      card.classList.toggle('hide', cat!=='all' && card.getAttribute('data-categorie')!==cat);
+    });
+  });
+});
+
+// Vérification du panier côté client
+async function verifierPanier() {
+    try {
+        let response = await fetch('/reservation-public/panier-actuel');
+        if (!response.ok) throw new Error('Erreur lors de la récupération du panier');
+        let panierData = await response.json();
+        console.log('Panier actuel :', panierData);
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+// Appel automatique au chargement de la page
+window.onload = verifierPanier;
+</script>
+
+{% endblock %}

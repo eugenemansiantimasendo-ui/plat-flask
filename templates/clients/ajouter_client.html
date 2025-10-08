@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container my-5">
+    <div class="card shadow-lg border-0 rounded-4 mx-auto" style="max-width: 600px;">
+        <div class="card-header bg-gradient-primary text-white text-center py-4">
+            <h3 class="mb-0"><i class="bi bi-person-plus-fill"></i> Ajouter un client</h3>
+        </div>
+        <div class="card-body p-4">
+            <form method="POST">
+
+                <!-- Nom -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Nom</label>
+                    <input type="text" name="nom" class="form-control form-control-lg shadow-sm rounded-3" placeholder="Entrez le nom du client" required>
+                </div>
+
+                <!-- Email -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Email</label>
+                    <input type="email" name="email" class="form-control form-control-lg shadow-sm rounded-3" placeholder="Entrez l'email">
+                </div>
+
+                <!-- Contact -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Contact</label>
+                    <input type="text" name="Contact" class="form-control form-control-lg shadow-sm rounded-3" placeholder="Entrez le numéro de contact">
+                </div>
+
+                <!-- Boutons -->
+                <div class="d-flex justify-content-center gap-3">
+                    <button type="submit" class="btn btn-gradient-primary btn-lg shadow-lg text-white fw-bold">
+                        <i class="bi bi-check-lg"></i> Ajouter
+                    </button>
+                    <a href="{{ url_for('client.liste_client') }}" class="btn btn-secondary btn-lg shadow-sm">Retour</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Dégradé pour le header et boutons */
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #4e54c8, #8f94fb);
+}
+.btn-gradient-primary {
+    background: linear-gradient(90deg, #4e54c8, #8f94fb);
+    border: none;
+    transition: all 0.3s;
+}
+.btn-gradient-primary:hover {
+    background: linear-gradient(90deg, #8f94fb, #4e54c8);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+}
+
+/* Inputs hover */
+.form-control:hover {
+    border-color: #8f94fb;
+    box-shadow: 0 0 8px rgba(143,148,251,0.3);
+    transition: all 0.2s;
+}
+
+/* Card hover */
+.card:hover {
+    transform: translateY(-3px);
+    transition: all 0.3s;
+}
+</style>
+{% endblock %}

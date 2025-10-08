@@ -1,0 +1,88 @@
+{% extends "plat/base_client.html" %}
+
+{% block title %}Ticket #{{ reservation.id_reservation }}{% endblock %}
+
+{% block content %}
+
+<div class="ticket-wrapper mx-auto my-4 p-0" style="max-width: 380px; font-family: 'Courier New', monospace; background: #fff; border: 1px solid #ccc; border-radius: 5px; box-shadow: 2px 2px 8px rgba(0,0,0,0.1);">
+
+  <!-- Header -->
+  <div class="ticket-header text-center p-2" style="background-color: #222; color: #fff;">
+    <h3 class="mb-0">🍽️ Restaurant Eugene</h3>
+    <small>Ticket #{{ reservation.id_reservation }}</small>
+  </div>
+
+  <!-- Bande perforée -->
+  <div style="border-top: 2px dashed #888; margin: 5px 0;"></div>
+
+  <!-- Client & QR Code -->
+  <div class="ticket-body p-2">
+    <strong>Client:</strong><br>
+    {{ client.nom if client else "Inconnu" }}<br>
+    {{ client.email if client else "Inconnu" }}<br>
+    {{ client.telephone if client else "Inconnu" }}<br>
+
+    <div class="text-center my-2">
+      <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR Code" style="max-width: 120px;">
+    </div>
+
+    <hr style="border-top: 1px dashed #ccc;">
+
+    <strong>Plats commandés:</strong>
+    <ul style="list-style: none; padding-left: 0; margin: 5px 0;">
+      {% set total = 0 %}
+      {% for item in items %}
+        {% set prix = item.prix_unitaire if item.prix_unitaire is not none else (item.plat.prix if item.plat else 0) %}
+        {% set item_total = item.quantite * prix %}
+        <li style="display:flex; justify-content:space-between;">
+          <span>{{ item.plat.nom if item.plat else "Plat inconnu" }} x{{ item.quantite }}</span>
+          <span>${{ '%.2f'|format(item_total) }}</span>
+        </li>
+        {% set total = total + item_total %}
+      {% endfor %}
+    </ul>
+
+    <hr style="border-top: 2px dashed #888;">
+
+    <div style="display:flex; justify-content:space-between; font-weight:bold; font-size:1.1em;">
+      <span>Total:</span>
+      <span>${{ '%.2f'|format(total) }}</span>
+    </div>
+
+    <hr style="border-top: 2px dashed #888; margin-top: 10px;">
+
+    <p class="text-center" style="font-size:0.9em; margin: 5px 0;">Merci pour votre commande !<br>Présentez le QR code à l'arrivée.</p>
+  </div>
+</div>
+
+<!-- Boutons action -->
+<div class="text-center mt-3" id="ticket-actions"></div>
+
+<style>
+@media print {
+  body * { visibility: hidden; }
+  .ticket-wrapper, .ticket-wrapper * { visibility: visible; }
+  .ticket-wrapper { position: absolute; top: 0; left: 0; width: 100%; margin:0; border:none; box-shadow:none; }
+  #ticket-actions { display: none !important; }
+}
+</style>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function estMobile() {
+  return /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const actionsDiv = document.getElementById('ticket-actions');
+  const downloadUrl = "{{ url_for('reservation_public.telecharger_ticket', reservation_id=reservation.id_reservation) }}";
+
+  const downloadBtn = `<a class="btn btn-success me-2 mb-2" href="${downloadUrl}">📥 Télécharger PDF</a>`;
+  const printBtn = `<button class="btn btn-secondary mb-2" onclick="window.print()">🖨️ Imprimer</button>`;
+
+  actionsDiv.innerHTML = estMobile() ? downloadBtn + printBtn : printBtn + downloadBtn;
+});
+</script>
+{% endblock %}

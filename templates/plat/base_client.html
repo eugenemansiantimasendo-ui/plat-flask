@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}Menu Restaurant{% endblock %}</title>
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+
+<style>
+/* --- Styles existants --- */
+body { font-family: Arial, sans-serif; background:#f8f9fa; padding-top:70px; }
+.navbar-client {  background: linear-gradient(180deg, #0d6efd, #6610f2); }
+.navbar-client a, .navbar-client .nav-link { color:white; }
+.navbar-client a:hover, .navbar-client .nav-link:hover, .navbar-client .active { color:#ffd700; }
+
+/* Animations titre */
+@keyframes slideFadeIn { 0% { opacity:0; transform:translateY(-20px); } 100% { opacity:1; transform:translateY(0); } }
+.text-animate { animation: slideFadeIn 1s ease-out forwards; }
+
+/* Menu et cartes plats - flux vertical */
+#menu {
+  margin-bottom: 30px;
+}
+.card {
+  display: block;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto 15px;
+  border:1px solid #ddd;
+  border-radius:5px;
+  padding:15px;
+  background:#fff;
+  box-shadow:0 3px 6px rgba(0,0,0,0.1);
+  text-align:center;
+  transition: opacity 0.3s, transform 0.3s, box-shadow 0.3s;
+  cursor:pointer;
+}
+.card:hover {
+  transform: translateY(-5px) scale(1.05);
+  box-shadow:0 8px 20px rgba(0,0,0,0.2);
+}
+.card img {
+  width:100%;
+  height:150px;
+  object-fit:cover;
+  border-radius:5px;
+  margin-bottom:10px;
+  filter: brightness(1.05) contrast(1.1) saturate(1.1);
+  transition: transform 0.3s, filter 0.3s;
+}
+.card img:hover {
+  transform: scale(1.1);
+  filter: brightness(1.2) contrast(1.2) saturate(1.2);
+}
+
+/* Quantité et bouton Ajouter */
+.qty-add { display:flex; justify-content:center; align-items:center; gap:5px; margin-top:5px; }
+.qty-add input { width:60px; text-align:center; border-radius:4px; border:1px solid #ccc; padding:2px 5px; }
+.qty-add .btn { min-width:70px; padding:4px 10px; font-size:0.9rem; }
+
+/* Onglets catégories */
+.categorie-btn { margin:2px; }
+.categorie-active { background-color:#007bff !important; color:white !important; }
+
+/* Panier flottant */
+#panier {
+    position: fixed;
+    bottom:20px;
+    right:20px;
+    width:250px;
+    background:white;
+    border:1px solid #ccc;
+    padding:10px;
+    border-radius:10px;
+    box-shadow:0 0 15px rgba(0,0,0,0.2);
+    z-index:1000;
+    touch-action: none; /* pour mobile */
+    opacity: 0.7;
+    transition: opacity 0.3s;
+}
+#panier:hover {
+    opacity: 1; 
+}
+#panier h5 { margin-top:0; text-align:center; color:#007bff; }
+.panier-item { display:flex; justify-content:space-between; margin-bottom:5px; }
+.panier-item button { background:red; color:white; border:none; border-radius:3px; cursor:pointer; }
+
+/* Animation image volante vers panier */
+.flying-img { position:absolute; width:50px; height:50px; transition: transform 1s ease-in-out, opacity 1s ease-in-out; z-index:9999; pointer-events:none; animation: flyToCart 1s forwards; }
+@keyframes flyToCart { to { transform: translate(var(--x,0), var(--y,0)) scale(0.1); opacity:0; } }
+
+/* Modale client */
+.modal-header.bg-success { background-color:#28a745 !important; color:white; }
+.modal-body { font-size:0.95rem; }
+.modal-footer .btn { min-width:100px; }
+
+/* Hero Section */
+.hero-background { position:absolute; top:0; left:0; width:100%; height:100%; z-index:0; overflow:hidden; }
+.hero-background video { width:100%; height:100%; object-fit:cover; object-position:center; }
+.hero-background .overlay { position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); }
+.hero-content { position:relative; z-index:1; }
+.hero-text h2 { font-size:2.5rem; font-weight:700; }
+.hero-text p { font-size:1.1rem; }
+.hero-actions .btn { margin-right:0.5rem; }
+
+/* Style hover du dropdown */
+.dropdown-menu .dropdown-item { transition: background-color 0.3s ease, color 0.3s ease; }
+.dropdown-menu { background-color: #000 !important; }
+.dropdown-menu .dropdown-item { color: #fff !important; }
+.dropdown-menu .dropdown-item:hover, .dropdown-menu .dropdown-item:focus { background-color: #222 !important; color: #fff !important; }
+
+/* Avis - étoiles */
+.star-rating { display:flex; flex-direction:row-reverse; justify-content:center; gap:5px; }
+.star-rating input { display:none; }
+.star-rating label { font-size:1.2rem; cursor:pointer; color:#ddd; }
+.star-rating label.text-warning { color:#ffc107; }
+
+/* Flash notifications */
+.flash-message { position:fixed; top:80px; right:20px; z-index:2000; padding:10px 20px; border-radius:5px; color:#fff; animation: slideIn 0.5s ease forwards; }
+.flash-success { background-color:#28a745; }
+.flash-error { background-color:#dc3545; }
+@keyframes slideIn { from {opacity:0; transform:translateX(100%);} to {opacity:1; transform:translateX(0);} }
+
+
+/* Footer */
+.footer {
+     background: linear-gradient(180deg, #0d6efd, #6610f2); /* Dégradé bleu */
+    color: white;
+    padding: 15px;
+    text-align: center;
+    margin-top: 30px;
+    box-shadow: 0 -4px 10px rgba(0,0,0,0.2); /* Ombre légère */
+   
+}
+
+/* Galerie scrollable réseaux sociaux */
+.social-gallery {
+    display: flex;
+    gap: 15px;
+    overflow-x: auto;      
+    padding: 10px 0;
+    scroll-snap-type: x mandatory; /* Effet "snap" comme galerie mobile */
+    -webkit-overflow-scrolling: touch;
+}
+
+.social-gallery a,
+.social-gallery button {
+    flex: 0 0 auto; /* Empêche de se réduire */
+    scroll-snap-align: start;
+    font-size: 0.9rem;
+    padding: 8px 14px;
+    border-radius: 50px; /* Boutons arrondis */
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    color: white;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.social-gallery a:hover,
+.social-gallery button:hover {
+    transform: scale(1.08);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+/* Liens normaux du footer */
+.footer a {
+    color: white;
+    text-decoration: none;
+}
+.footer a:hover {
+    color: #ffd700;
+}
+
+/* Ancien style boutons sociaux (pour compatibilité si tu gardes social-share) */
+.footer .social-share .btn {
+    font-size: 0.9rem;
+    padding: 5px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 5px;
+    transition: transform 0.2s;
+}
+.footer .social-share .btn:hover { 
+    transform: scale(1.1); 
+}
+.btn-primary{ background: linear-gradient(180deg, #0d6efd, #6610f2);}
+/* Responsive */
+@media (max-width:768px) {
+  #menu {
+    max-width: 100%;
+  }
+}
+</style>
+
+{% block styles %}{% endblock %}
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-client fixed-top py-3 shadow-sm" style="background: linear-gradient(90deg,#0d6efd,#6610f2);">
+  <div class="container">
+    <a href="{{ url_for('plats_public.afficher_menu') }}" class="navbar-brand text-white fw-bold d-flex align-items-center">
+      <i class="bi bi-egg-fried me-2"></i> Restaurant App
+    </a>
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#clientNavbar">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="clientNavbar">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item">
+          <a href="{{ url_for('plats_public.afficher_menu') }}" class="nav-link text-white d-flex align-items-center">
+            <i class="bi bi-list-ul me-1"></i> Menu
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ url_for('reservation_public.mon_panier') }}" class="nav-link text-white d-flex align-items-center">
+            <i class="bi bi-cart3 me-1"></i> Panier
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ url_for('client.contact') }}" class="nav-link text-white d-flex align-items-center">
+            <i class="bi bi-envelope me-1"></i> Contact
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="{{ url_for('client.aide') }}" class="nav-link text-white d-flex align-items-center">
+            <i class="bi bi-question-circle me-1"></i> Aide
+          </a>
+        </li>
+
+        {% if g.client %}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" role="button" data-bs-toggle="dropdown">
+              <img src="https://ui-avatars.com/api/?name={{ g.client.nom[0] }}{{ g.client.prenom[0] }}&background={{ ['007bff','28a745','ffc107','dc3545','6f42c1','20c997'] | random }}&color=fff&rounded=true&size=30"
+                   alt="Avatar" class="rounded-circle me-2" style="width:30px; height:30px;">
+              {{ g.client.nom }}
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <a class="dropdown-item d-flex align-items-center" href="{{ url_for('client.profil') }}">
+                  <i class="bi bi-person me-2"></i> Mon Profil
+                </a>
+              </li>
+              <li>
+                <a class="dropdown-item d-flex align-items-center" href="{{ url_for('reservation_public.commandes') }}">
+                  <i class="bi bi-receipt me-2"></i> Mes Commandes
+                </a>
+              </li>
+              <li><hr class="dropdown-divider"></li>
+              <li>
+                <a class="dropdown-item d-flex align-items-center" href="{{ url_for('client.deconnexion') }}">
+                  <i class="bi bi-box-arrow-right me-2"></i> Déconnexion
+                </a>
+              </li>
+            </ul>
+          </li>
+        {% else %}
+          <li class="nav-item">
+            <a href="{{ url_for('client.connexion') }}" class="nav-link text-white d-flex align-items-center">
+              <i class="bi bi-box-arrow-in-right me-1"></i> Connexion
+            </a>
+          </li>
+          <li class="nav-item">
+            <a href="{{ url_for('client.inscription') }}" class="nav-link text-white d-flex align-items-center">
+              <i class="bi bi-person-plus me-1"></i> Inscription
+            </a>
+          </li>
+        {% endif %}
+      </ul>
+    </div>
+  </div>
+</nav>
+
+<!-- Hero Section -->
+<section id="hero" class="hero section dark-background mb-5" style="position:relative; overflow:hidden; min-height:70vh;">
+  <div class="hero-background">
+    <video autoplay muted loop playsinline>
+      <source src="{{ url_for('static', filename='video-4.mp4') }}" type="video/mp4">
+    </video>
+    <div class="overlay"></div>
+  </div>
+  <div class="container hero-content text-white">
+    <div class="row align-items-center" style="min-height:70vh;">
+      <div class="col-lg-8">
+        <div class="hero-text text-animate">
+          <h2 class="hero-title">Savourez chaque instant chez nous</h2>
+          <p class="hero-description">
+            À Matadi, découvrez une cuisine authentique préparée avec passion, de recettes traditionnelles aux créations innovantes...
+          </p>
+          <div class="hero-actions mt-4">
+            <a href="#" class="btn btn-primary btn-lg me-2"
+   data-bs-toggle="modal" data-bs-target="#reservationTableModal">
+   Réserver une table
+</a>
+
+            <a href="#menu" class="btn btn-outline-light btn-lg">Voir le Menu</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Contenu principal -->
+<div id="content">
+  {% block content %}
+  <div id="menu">
+    {% for plat in plats %}
+      <div class="card">
+        <img src="{{ url_for('static', filename='images/' ~ plat.image) }}" alt="{{ plat.nom }}">
+        <h5>{{ plat.nom }}</h5>
+        <p>{{ plat.description }}</p>
+        <div class="qty-add">
+          <input type="number" value="1" min="1">
+          <button class="btn btn-primary">Ajouter</button>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+  {% endblock %}
+</div>
+
+<!-- Modal Avis -->
+<div class="modal fade" id="avisModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header bg-success">
+        <h5 class="modal-title" id="avisModalTitle">Laisser un avis</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+
+      <form method="POST" action="{{ url_for('plats_public.ajouter_avis') }}">
+        <div class="modal-body">
+          <input type="hidden" id="avisPlatId" name="id_plat">
+          <div class="mb-3">
+            <label>Nom :</label>
+            <input type="text" class="form-control" name="nom_client" required>
+          </div>
+          <div class="mb-3 star-rating">
+            <label>Note :</label><br>
+            {% for i in range(1,6) %}
+              <input type="radio" name="note" value="{{ i }}" id="star{{ i }}" required>
+              <label for="star{{ i }}" class="bi bi-star"></label>
+            {% endfor %}
+          </div>
+          <div class="mb-3">
+            <label>Commentaire :</label>
+            <textarea class="form-control" name="commentaire" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="btn btn-success">Envoyer</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- templates/public/reservation_modal.html -->
+<!-- Modal Réservation Table -->
+<div class="modal fade" id="reservationTableModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow-lg rounded-4 animate__animated animate__fadeInDown">
+
+      <!-- En-tête -->
+      <div class="modal-header p-3" style="background: linear-gradient(90deg,#0d6efd,#6610f2); border-top-left-radius:16px; border-top-right-radius:16px;">
+        <h5 class="modal-title text-white d-flex align-items-center">
+          <i class="bi bi-calendar-check me-2"></i> Réserver une Table
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+
+      <!-- Formulaire -->
+      <form id="reservationTableForm" method="POST" action="{{ url_for('reservation_public.reserver_table') }}" class="p-3">
+        <div class="modal-body">
+          <div class="row g-3">
+
+            <!-- Nom complet -->
+            <div class="col-md-6 position-relative">
+              <label for="nom-client" class="form-label">Nom complet</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-person"></i></span>
+                <input type="text" id="nom-client" name="nom" class="form-control rounded-3" placeholder="Jean Dupont" required>
+              </div>
+            </div>
+
+            <!-- Email -->
+            <div class="col-md-6 position-relative">
+              <label for="email-client" class="form-label">Email</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                <input type="email" id="email-client" name="email" class="form-control rounded-3" placeholder="exemple@mail.com" required>
+              </div>
+            </div>
+
+            <!-- Téléphone -->
+            <div class="col-md-6 position-relative">
+              <label for="tel-client" class="form-label">Téléphone</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-telephone"></i></span>
+                <input type="tel" id="tel-client" name="tel" class="form-control rounded-3" placeholder="+243 897 653 728" required pattern="^\+\d{1,4}\s?\d{4,14}$">
+              </div>
+            </div>
+
+            <!-- Date -->
+            <div class="col-md-6 position-relative">
+              <label for="date-reservation" class="form-label">Date</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+                <input type="date" id="date-reservation" name="date" class="form-control rounded-3" required>
+              </div>
+            </div>
+
+            <!-- Heure -->
+            <div class="col-md-6 position-relative">
+              <label for="heure-reservation" class="form-label">Heure</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-clock"></i></span>
+                <input type="time" id="heure-reservation" name="heure" class="form-control rounded-3" required>
+              </div>
+            </div>
+
+            <!-- Nombre de personnes -->
+            <div class="col-md-6 position-relative">
+              <label for="nb-personnes" class="form-label">Nombre de personnes</label>
+              <div class="input-group">
+                <span class="input-group-text"><i class="bi bi-people"></i></span>
+                <input type="number" id="nb-personnes" name="personnes" class="form-control rounded-3" min="1" value="1" required>
+              </div>
+            </div>
+
+            <!-- Message facultatif -->
+            <div class="col-12 position-relative">
+              <label for="message-client" class="form-label">Message (facultatif)</label>
+              <textarea id="message-client" name="message" class="form-control rounded-3" rows="3" placeholder="Ex: Allergies, demande spéciale..."></textarea>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Pied -->
+        <div class="modal-footer d-flex justify-content-between p-3 border-0">
+          <button type="button" class="btn btn-outline-secondary rounded-3" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-success rounded-3">Réserver</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.getElementById('reserver-btn').addEventListener('click', async () => {
+    const date = document.getElementById('date_reservation').value;
+    const heure = document.getElementById('heure_reservation').value;
+    const nb_personnes = document.getElementById('nb_personnes').value;
+
+    const response = await fetch("{{ url_for('reservation_public.reserver_table') }}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            date_reservation: date,
+            heure_reservation: heure,
+            nb_personnes: nb_personnes
+        })
+    });
+
+    const result = await response.json();
+    alert(result.message);
+});
+</script>
+
+
+
+
+
+
+
+
+
+
+
+<!-- CSS Animation -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+
+
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+{% block scripts %}
+<script>
+// Ouvrir modal avis
+function openAvisModal(idPlat, nomPlat) {
+    const modalTitle = document.getElementById('avisModalTitle');
+    modalTitle.textContent = `Laisser un avis pour "${nomPlat}"`;
+    document.getElementById('avisPlatId').value = idPlat;
+    const avisModal = new bootstrap.Modal(document.getElementById('avisModal'));
+    avisModal.show();
+}
+
+// Étoiles interactives
+document.querySelectorAll('.star-rating input').forEach(input => {
+    input.addEventListener('change', function() {
+        const stars = this.closest('.star-rating').querySelectorAll('label');
+        stars.forEach((star, i) => {
+            star.classList.toggle('text-warning', i < this.value);
+        });
+    });
+});
+</script>
+{% endblock %}
+
+<!-- Footer -->
+<footer class="footer">
+    <p>&copy; {{ current_year }} Restaurant Matadi. Tous droits réservés.</p>
+
+    <!-- Galerie scrollable des réseaux sociaux -->
+    <div class="social-gallery">
+        <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.url_root }}" target="_blank" class="btn btn-primary">
+            <i class="bi bi-facebook"></i> Facebook
+        </a>
+        <a href="https://twitter.com/intent/tweet?url={{ request.url_root }}&text=Découvrez notre restaurant !" target="_blank" class="btn btn-info text-white">
+            <i class="bi bi-twitter"></i> Twitter
+        </a>
+        <a href="https://wa.me/?text=Découvrez notre restaurant ! {{ request.url_root }}" target="_blank" class="btn btn-success">
+            <i class="bi bi-whatsapp"></i> WhatsApp
+        </a>
+        <button class="btn btn-dark" id="copyBtn">
+    <i class="bi bi-link-45deg"></i> Copier le lien
+</button>
+    </div>
+</footer>
+
+<script>
+const copyBtn = document.getElementById('copyBtn');
+copyBtn.addEventListener('click', copierURL);
+copyBtn.addEventListener('touchend', copierURL); // pour mobile
+
+function copierURL(e) {
+    e.preventDefault(); // empêche tout comportement par défaut
+    navigator.clipboard.writeText(window.location.href)
+        .then(() => alert("Lien du menu copié 📋"))
+        .catch(() => alert("Impossible de copier le lien. Assurez-vous d'être sur HTTPS"));
+}
+</script>
+
+
+
+
+
+
+</body>
+</html>
+
+<script>
+  // Révélation au scroll
+document.addEventListener("DOMContentLoaded", () => {
+  const revealEl = document.querySelector(".scroll-reveal");
+
+  function checkScroll() {
+    const rect = revealEl.getBoundingClientRect();
+    if (rect.top < window.innerHeight - 100) {
+      revealEl.classList.add("show");
+      window.removeEventListener("scroll", checkScroll);
+    }
+  }
+
+  window.addEventListener("scroll", checkScroll);
+  checkScroll(); // Vérif initiale
+});
+
+
+
+  function copierURL() {
+  navigator.clipboard.writeText(window.location.href)
+    .then(()=>alert("Lien du menu copié 📋"))
+    .catch(()=>alert("Impossible de copier le lien"));
+}
+// Déplacement du panier sur mobile
+document.addEventListener('DOMContentLoaded', () => {
+    const panier = document.getElementById('panier');
+    let isDragging = false;
+    let startX = 0, startY = 0;
+
+    panier.addEventListener('touchstart', function(e) {
+        isDragging = true;
+        const touch = e.touches[0];
+        startX = touch.clientX;
+        startY = touch.clientY;
+    });
+
+    panier.addEventListener('touchmove', function(e) {
+        if (!isDragging) return;
+        const touch = e.touches[0];
+        const dx = touch.clientX - startX;
+        const dy = touch.clientY - startY;
+
+        const rect = panier.getBoundingClientRect();
+        let newLeft = rect.left + dx;
+        let newTop = rect.top + dy;
+
+        // Limites écran
+        newLeft = Math.max(0, Math.min(newLeft, window.innerWidth - rect.width));
+        newTop = Math.max(0, Math.min(newTop, window.innerHeight - rect.height));
+
+        panier.style.left = newLeft + 'px';
+        panier.style.top = newTop + 'px';
+        panier.style.bottom = 'auto';
+        panier.style.right = 'auto';
+
+        startX = touch.clientX;
+        startY = touch.clientY;
+    });
+
+    panier.addEventListener('touchend', function() {
+        isDragging = false;
+    });
+});
+
+
+</script>
+

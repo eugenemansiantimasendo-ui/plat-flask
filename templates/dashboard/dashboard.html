@@ -1,0 +1,241 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Restaurant{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-5 text-center animate__animated animate__fadeInDown fw-bold">Bienvenue au restaurant !</h1>
+
+    <!-- -------------------- -->
+    <!-- Cartes statistiques -->
+    <!-- -------------------- -->
+    <div class="row g-4 mb-5">
+        {% set cards = [
+            {'title':'Clients','count':nb_clients,'icon':'bi-people-fill','color':'primary','url':url_for('client.liste_client')},
+            {'title':'Plats','count':nb_plats,'icon':'bi-egg-fried','color':'success','url':url_for('plat.liste_plats')},
+            {'title':'Catégories','count':nb_categories,'icon':'bi-tags','color':'info','url':url_for('categorie.liste_categorie')},
+            {'title':'Réservations','count':nb_reservations,'icon':'bi-receipt-cutoff','color':'warning','url':url_for('reservation.liste_reservations')},
+            {'title':'Plats réservés','count':nb_serv_items,'icon':'bi-list-ul','color':'dark','url':url_for('reservation_items.list_reservation_items')},
+            {'title':'Clients servis','count':nb_clients_servis,'icon':'bi-check2-circle','color':'success','url':url_for('reservation_public.clients_servis')},
+            {'title':'Scanner QR','count':0,'icon':'bi-qr-code-scan','color':'danger','url':url_for('reservation_public.scanner_page')},
+            {'title':'Menu utilisateurs','count':plats|length,'icon':'bi-card-list','color':'secondary','url':url_for('plats_public.afficher_menu')}
+        ] %}
+
+        {% for card in cards %}
+        <div class="col-12 col-md-3">
+            <div class="card text-white bg-{{ card.color }} h-100 shadow-lg animate__animated animate__fadeInUp card-hover">
+                <div class="card-body text-center">
+                    <i class="bi {{ card.icon }} display-4 mb-2"></i>
+                    <h5 class="card-title">{{ card.title }}</h5>
+                    <p class="fs-3" id="count-{{ card.title|replace(' ', '_') }}">{{ card.count or 0 }}</p>
+                    <a href="{{ card.url }}" class="btn btn-light btn-sm mt-2">
+                        <i class="bi bi-arrow-right-circle"></i> Voir Détails
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- -------------------- -->
+    <!-- Graphiques -->
+    <!-- -------------------- -->
+    <div class="row g-4 mb-5">
+        <div class="col-12 col-md-6">
+            <div class="card shadow-lg animate__animated animate__fadeInLeft glass-card">
+                <div class="card-header bg-secondary text-white fw-bold">Statistiques générales</div>
+                <div class="card-body">
+                    <canvas id="dashboardChart" height="150"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-md-6">
+            <div class="card shadow-lg animate__animated animate__fadeInRight glass-card">
+                <div class="card-header bg-secondary text-white fw-bold">Réservations par mois</div>
+                <div class="card-body">
+                    <canvas id="monthlyChart" height="150"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card shadow-lg animate__animated animate__fadeInUp glass-card">
+                <div class="card-header bg-secondary text-white fw-bold">Top catégories (Plats)</div>
+                <div class="card-body">
+                    <canvas id="topCategoriesChart" height="150"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- -------------------- -->
+    <!-- Derniers clients & réservations -->
+    <!-- -------------------- -->
+    <div class="row g-4 mb-5">
+        <!-- Derniers clients -->
+        <div class="col-12 col-md-6">
+            <div class="card shadow-lg animate__animated animate__fadeInLeft glass-card">
+                <div class="card-header bg-primary text-white fw-bold">Derniers clients</div>
+                <div class="card-body table-responsive">
+                    <table class="table table-hover table-striped table-sm align-middle">
+                        <thead class="table-light">
+                            <tr><th>Nom</th><th>Email</th><th>Date création</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for client in derniers_clients %}
+                            <tr>
+                                <td>{{ client.nom }}</td>
+                                <td>{{ client.email }}</td>
+                                <td>{{ client.date_creation|format_date }}</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="3" class="text-center">Aucun client</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dernières réservations -->
+        <div class="col-12 col-md-6">
+            <div class="card shadow-lg animate__animated animate__fadeInRight glass-card">
+                <div class="card-header bg-success text-white fw-bold">Dernières réservations</div>
+                <div class="card-body table-responsive">
+                    <table class="table table-hover table-striped table-sm align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Client</th>
+                                <th>Date</th>
+                                <th>Heure</th>
+                                <th>Détails</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dernieres_reservations">
+                            {% for res in dernieres_reservations %}
+                            <tr>
+                                <td>{{ res.client.nom }}</td>
+                                <td>{{ res.date_reservation|format_date }}</td>
+                                <td>{{ res.heure_reservation.strftime('%H:%M') }}</td>
+                                <td>
+                                    {% if res.type_reservation == 'table' %}
+                                        Table n°{{ res.table.numero if res.table else '-' }}
+                                    {% elif res.type_reservation == 'plat' %}
+                                        {% if res.items %}
+                                            <ul class="mb-0 ps-3">
+                                                {% for item in res.items %}
+                                                    <li>{{ item.plat.nom }} × {{ item.quantite }} ({{ item.plat.prix*item.quantite }} FC)</li>
+                                                {% endfor %}
+                                            </ul>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if res.status == 'Confirmée' %}
+                                        <span class="badge bg-success">{{ res.status }}</span>
+                                    {% elif res.status == 'En attente' %}
+                                        <span class="badge bg-warning text-dark">{{ res.status }}</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">{{ res.status }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="5" class="text-center">Aucune réservation</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- -------------------- -->
+<!-- Styles et scripts -->
+<!-- -------------------- -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css"/>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+.glass-card {
+    border-radius: 1rem;
+    backdrop-filter: blur(10px) saturate(180%);
+    -webkit-backdrop-filter: blur(10px) saturate(180%);
+    background-color: rgba(255,255,255,0.25);
+    border: 1px solid rgba(255,255,255,0.3);
+}
+.card-hover:hover {
+    transform: scale(1.05);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+}
+</style>
+
+<script>
+$(document).ready(function(){
+    $('table').DataTable({ pageLength:5, lengthMenu:[5,10,20], order:[[0,'desc']] });
+
+    // Compteur dynamique
+    document.querySelectorAll('[id^="count-"]').forEach(el=>{
+        let count = parseInt(el.textContent);
+        let i = 0;
+        let interval = setInterval(()=>{
+            el.textContent = i;
+            i++;
+            if(i > count) clearInterval(interval);
+        }, 50);
+    });
+
+    // Graphiques
+    new Chart(document.getElementById('dashboardChart'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Réservations', 'Clients servis'],
+            datasets: [{ data: [{{ nb_reservations }}, {{ nb_clients_servis }}], backgroundColor: ['#ffc107','#28a745'], hoverOffset: 10 }]
+        },
+        options: { responsive:true, plugins:{ legend:{ position:'bottom' } } }
+    });
+
+    const ctxMonthly = document.getElementById('monthlyChart').getContext('2d');
+    const gradientMonthly = ctxMonthly.createLinearGradient(0,0,0,150);
+    gradientMonthly.addColorStop(0,'rgba(0,123,255,0.4)');
+    gradientMonthly.addColorStop(1,'rgba(0,123,255,0)');
+    new Chart(ctxMonthly, {
+        type: 'line',
+        data: {
+            labels: {{ mois_labels|tojson }},
+            datasets: [{
+                label: 'Réservations',
+                data: {{ reservations_par_mois|tojson }},
+                backgroundColor: gradientMonthly,
+                borderColor: 'rgba(0,123,255,1)',
+                fill:true,
+                tension:0.4,
+                pointRadius:5,
+                pointHoverRadius:8
+            }]
+        },
+        options: { responsive:true, plugins:{ legend:{ position:'top' }, tooltip:{ mode:'index', intersect:false } },
+                   scales:{ y:{ beginAtZero:true, stepSize:1 } } }
+    });
+
+    const catLabels = {{ top_categories.labels|tojson }};
+    const platData = {{ top_categories.data|tojson }};
+    const colors = catLabels.map((_,i)=>`hsl(${i*360/catLabels.length},70%,50%)`);
+    new Chart(document.getElementById('topCategoriesChart'), {
+        type: 'doughnut',
+        data: { labels: catLabels, datasets: [{ data: platData, backgroundColor: colors }] },
+        options: { responsive:true, plugins:{ legend:{ position:'right' } } }
+    });
+});
+</script>
+{% endblock %}

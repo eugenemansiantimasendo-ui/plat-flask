@@ -1,0 +1,59 @@
+{% extends "plat/base_client.html" %}
+
+{% block title %}Mot de passe oublié{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card shadow-lg">
+        <div class="card-header bg-primary text-white text-center">
+          <h4>Mot de passe oublié</h4>
+        </div>
+        <div class="card-body">
+
+          <!-- Affichage des messages flash -->
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                  {{ message }}
+                  <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+              {% endfor %}
+            {% endif %}
+          {% endwith %}
+
+          <!-- Formulaire de saisie de l'email -->
+          <form method="POST" action="{{ url_for('client.mot_de_passe_oublie') }}">
+            <div class="form-group mb-3">
+              <label for="email">Adresse email :</label>
+              <input
+                type="email"
+                name="email"
+                id="email"
+                class="form-control"
+                placeholder="Entrez votre email"
+                required
+              >
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Envoyer le lien de réinitialisation</button>
+          </form>
+
+          <!-- Affichage du lien de réinitialisation pour test -->
+          {% if reset_url %}
+            <div class="mt-3 p-3 border rounded bg-light">
+              <strong>Lien de réinitialisation (test) :</strong><br>
+              <a href="{{ reset_url }}">{{ reset_url }}</a>
+            </div>
+          {% endif %}
+
+          <div class="mt-3 text-center">
+            <a href="{{ url_for('client.connexion') }}">Retour à la connexion</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

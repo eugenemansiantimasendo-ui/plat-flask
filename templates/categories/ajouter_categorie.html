@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}Ajouter une catégorie{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+
+    <!-- Card centrée -->
+    <div class="card shadow-lg border-0 rounded-4 mx-auto" style="max-width: 600px;">
+        <div class="card-header bg-gradient-primary text-white text-center py-3">
+            <h4 class="mb-0"><i class="bi bi-plus-circle-fill"></i> Ajouter une catégorie</h4>
+        </div>
+        <div class="card-body p-4">
+
+            <form method="POST">
+
+                <!-- Champ Nom -->
+                <div class="mb-4">
+                    <label for="nom" class="form-label fw-semibold">
+                        <i class="bi bi-tags-fill"></i> Nom de la catégorie
+                    </label>
+                    <input type="text" class="form-control form-control-lg shadow-sm rounded-3"
+                           id="nom" name="nom" required>
+                </div>
+
+                <!-- Boutons -->
+                <div class="d-flex justify-content-between gap-3">
+                    <a href="{{ url_for('categorie.liste_categorie') }}" class="btn btn-gradient-cancel btn-lg shadow-sm text-white fw-bold">
+                        <i class="bi bi-x-circle"></i> Annuler
+                    </a>
+                    <button type="submit" class="btn btn-gradient-primary btn-lg shadow-lg text-white fw-bold">
+                        <i class="bi bi-save-fill"></i> Enregistrer
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<style>
+
+/* Dégradé pour header et bouton Enregistrer */
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #0d6efd, #6610f2);
+}
+.btn-gradient-primary {
+    background: linear-gradient(90deg, #0d6efd, #6610f2);
+    border: none;
+    transition: all 0.3s;
+}
+.btn-gradient-primary:hover {
+    background: linear-gradient(90deg, #6610f2, #0d6efd);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+}
+
+/* Bouton Annuler avec gradient inversé */
+.btn-gradient-cancel {
+    background: linear-gradient(90deg, #6610f2, #0d6efd);
+    border: none;
+    transition: all 0.3s;
+}
+.btn-gradient-cancel:hover {
+    background: linear-gradient(90deg, #0d6efd, #6610f2);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+}
+
+/* Inputs hover */
+.form-control:hover {
+    border-color: #6610f2;
+    box-shadow: 0 0 8px rgba(102,16,242,0.3);
+    transition: all 0.2s;
+}
+
+/* Card hover */
+.card:hover {
+    transform: translateY(-3px);
+    transition: all 0.3s;
+}
+
+/* Textes des labels */
+.form-label {
+    color: #212529;
+}
+</style>
+{% endblock %}

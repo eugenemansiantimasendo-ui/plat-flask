@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+
+{% block title %}Liste des plats{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+
+    <!-- Header avec boutons -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-center mb-4 gap-3">
+        <a href="{{ url_for('index') }}" class="btn btn-secondary shadow-sm">
+            <i class="bi bi-house-fill"></i> Accueil
+        </a>
+        <a href="{{ url_for('plat.ajouter_plat') }}" class="btn btn-primary shadow-sm">
+            <i class="bi bi-plus-circle"></i> Ajouter un plat
+        </a>
+    </div>
+
+    <!-- Titre central -->
+    <div class="text-center mb-5">
+        <h2 class="fw-bold text-gradient-primary">
+            <i class="bi bi-basket-fill"></i> Liste des plats
+        </h2>
+        <p class="text-muted">Gérez facilement vos plats enregistrés</p>
+    </div>
+
+    <!-- Table des plats dans une card -->
+    <div class="card shadow-lg border-0 rounded-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Nom</th>
+                            <th>Description</th>
+                            <th>Catégorie</th>
+                            <th>Prix</th>
+                            <th>Image</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for plat in plats %}
+                        <tr class="align-middle">
+                            <td>{{ plat.id_plat }}</td>
+                            <td class="fw-semibold">{{ plat.nom }}</td>
+                            <td>{{ plat.description or '-' }}</td>
+                            <td>
+                                {% if plat.categorie %}
+                                    <span class="badge bg-info text-dark">{{ plat.categorie.nom }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ '%.2f'|format(plat.prix) }} $</td>
+                            <td>
+                                {% if plat.image_url %}
+                                    <img src="{{ url_for('static', filename='uploads/' ~ plat.image_url) }}" 
+                                         alt="{{ plat.nom }}" class="rounded shadow-sm" style="width:50px; height:50px; object-fit:cover;">
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <a href="{{ url_for('plat.modifier_plat', id=plat.id_plat) }}" class="btn btn-warning btn-sm me-1 shadow-sm" title="Modifier">
+                                    <i class="bi bi-pencil-fill"></i>
+                                </a>
+                                <form action="{{ url_for('plat.supprimer_plat', id=plat.id_plat) }}" method="POST" class="d-inline" onsubmit="return confirm('Voulez-vous vraiment supprimer ce plat ?');">
+                                    <button class="btn btn-danger btn-sm shadow-sm" title="Supprimer">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                Aucun plat disponible
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Dégradé pour le titre */
+    .text-gradient-primary {
+        background: linear-gradient(90deg, #0d6efd, #6610f2);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    /* Hover sur les lignes du tableau */
+    table.table-hover tbody tr:hover {
+        background-color: rgba(13, 110, 253, 0.1);
+        transition: background-color 0.2s;
+    }
+
+    /* Badges */
+    .badge {
+        font-size: 0.9em;
+        padding: 0.4em 0.6em;
+    }
+
+    /* Boutons avec transition */
+    .btn {
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+</style>
+{% endblock %}

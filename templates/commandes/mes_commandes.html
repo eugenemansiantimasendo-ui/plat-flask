@@ -1,0 +1,79 @@
+{% extends "plat/menu.html" %}
+
+{% block title %}Mes commandes{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <h2 class="mb-4">📦 Mes commandes</h2>
+
+    {% if commandes %}
+        {% for commande in commandes %}
+            <div class="card mb-3 shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div>
+                        Commande #{{ commande.id_reservation }} — 
+                        <strong>{{ commande.date_reservation | format_date('%d/%m/%Y') }}</strong>
+                    </div>
+                    <span class="badge bg-info">
+                        {{ commande.status if commande.status else "En attente" }}
+                    </span>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        {% for item in commande.items_commandes %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                {{ item.plat.nom }} (x{{ item.quantite }})
+                                <span>{{ "%.2f"|format(item.prix_unitaire * item.quantite) }} $</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <div class="card-footer d-flex justify-content-between align-items-center">
+                    <strong>Total : {{ "%.2f"|format(commande.total) }} $</strong>
+                    <div>
+                        <a href="{{ url_for('reservation_public.telecharger_ticket', reservation_id=commande.id_reservation) }}"
+                           class="btn btn-sm btn-success">
+                           🧾 Ticket PDF
+                        </a>
+                        <button class="btn btn-sm btn-primary recommander-btn"
+                                data-reservation-id="{{ commande.id_reservation }}">
+                            🔄 Recommander
+                        </button>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-warning">⚠️ Vous n’avez pas encore de commandes.</div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const buttons = document.querySelectorAll(".recommander-btn");
+    buttons.forEach(btn => {
+        btn.addEventListener("click", async function() {
+            const resId = this.dataset.reservationId;
+            try {
+                const response = await fetch(`/reservation-public/recommander/${resId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" }
+});
+
+                const data = await response.json();
+                if (data.success) {
+                    alert(`Commande ajoutée au panier (${data.totalArticles} articles) !`);
+                } else {
+                    alert("Erreur lors de la recommandation.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Erreur réseau.");
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

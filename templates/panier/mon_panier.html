@@ -1,0 +1,154 @@
+{% extends "plat/base_client.html" %}
+
+{% block title %}Mon Panier{% endblock %}
+
+{% block content %}
+<h1 class="text-center mb-4">Mon Panier</h1>
+
+{% if panier %}
+<table class="table table-bordered align-middle text-center">
+    <thead class="table-light">
+        <tr>
+            <th>Plat</th>
+            <th>Quantité</th>
+            <th>Prix Unitaire</th>
+            <th>Total</th>
+            <th>Action</th>
+        </tr>
+    </thead>
+    <tbody id="panier-items">
+        {% for item in panier %}
+        <tr data-id="{{ item.id }}">
+            <td>{{ item.nom }}</td>
+            <td>{{ item.quantite }}</td>
+            <td>$ {{ '%.2f'|format(item.prix) }}</td>
+            <td>$ {{ '%.2f'|format(item.prix * item.quantite) }}</td>
+            <td>
+                <button class="btn btn-danger btn-sm" onclick="supprimerItem({{ item.id }})">X</button>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+    <tfoot>
+        <tr>
+            <th colspan="3" class="text-end">Total Panier :</th>
+            <th colspan="2" id="total">$ {{ '%.2f'|format(total) }}</th>
+        </tr>
+    </tfoot>
+</table>
+
+<div class="text-center mt-3">
+    <button class="btn btn-success" onclick="validerCommande()"><i class="bi bi-check-circle"></i> Valider la commande</button>
+</div>
+{% else %}
+<p class="text-center">Votre panier est vide.</p>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+let panier = {{ panier|tojson }};
+
+// Toast container
+if (!document.getElementById('toast-container')) {
+    const container = document.createElement('div');
+    container.id = 'toast-container';
+    container.style.position = 'fixed';
+    container.style.bottom = '20px';
+    container.style.right = '20px';
+    container.style.zIndex = '1080';
+    document.body.appendChild(container);
+}
+
+// Toast function
+function showToast(msg, type='success') {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-bg-${type} border-0`;
+    toast.innerHTML = `<div class="d-flex">
+        <div class="toast-body">${msg}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+    </div>`;
+    container.appendChild(toast);
+    const bsToast = new bootstrap.Toast(toast, { delay: 3000 });
+    bsToast.show();
+    toast.addEventListener('hidden.bs.toast', () => toast.remove());
+}
+
+// Afficher panier
+function afficherPanier() {
+    const panierItems = document.getElementById('panier-items');
+    if(!panierItems) return;
+    panierItems.innerHTML = '';
+    let total = 0;
+    panier.forEach(item => {
+        total += item.prix * item.quantite;
+        panierItems.innerHTML += `
+        <tr data-id="${item.id}">
+            <td>${item.nom}</td>
+            <td>${item.quantite}</td>
+            <td>$ ${item.prix.toFixed(2)}</td>
+            <td>$ ${(item.prix * item.quantite).toFixed(2)}</td>
+            <td><button class="btn btn-danger btn-sm" onclick="supprimerItem(${item.id})">X</button></td>
+        </tr>`;
+    });
+    const totalElem = document.getElementById('total');
+    if(totalElem) totalElem.innerText = `$ ${total.toFixed(2)}`;
+}
+
+// Supprimer item
+function supprimerItem(id) {
+    panier = panier.filter(i => i.id !== id);
+    afficherPanier();
+    sauvegarderPanier();
+    showToast("Plat supprimé du panier", 'warning');
+}
+
+// Sauvegarder panier côté serveur
+function sauvegarderPanier() {
+    fetch("{{ url_for('reservation_public.sauvegarder_panier') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(panier)
+    });
+}
+
+// Valider commande et télécharger PDF
+function validerCommande() {
+    if (panier.length === 0) { showToast("Panier vide !", 'danger'); return; }
+
+    const nom = prompt("Nom complet");
+    if (!nom?.trim()) { showToast("Nom obligatoire !", 'danger'); return; }
+
+    const email = prompt("Email");
+    if (!email?.match(/^\S+@\S+\.\S+$/)) { showToast("Email invalide !", 'danger'); return; }
+
+    const tel = prompt("Téléphone");
+    if (!tel?.trim()) { showToast("Téléphone obligatoire !", 'danger'); return; }
+
+    fetch("{{ url_for('reservation_public.ajouter_commande_multiple') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nom, email, tel, panier })
+    })
+    .then(res => res.ok ? res.blob() : res.json().then(j => Promise.reject(j.message || "Erreur serveur")))
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ticket_${Date.now()}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        showToast("Commande validée et ticket téléchargé !", 'success');
+        panier = [];
+        afficherPanier();
+        sauvegarderPanier();
+    })
+    .catch(err => showToast("Erreur : " + err, 'danger'));
+}
+
+document.addEventListener('DOMContentLoaded', afficherPanier);
+</script>
+{% endblock %}
+

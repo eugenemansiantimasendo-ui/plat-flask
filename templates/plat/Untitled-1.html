@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Menu Restaurant</title>
+  
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin:0;
+      padding:20px;
+      background:#f8f9fa;
+    }
+    h1 {
+      text-align: center;
+      color:#007bff;
+      margin-bottom:30px;
+    }
+
+    /* Cards plats */
+    .card {
+      border:1px solid #ddd;
+      border-radius:5px;
+      padding:15px;
+      margin:10px;
+      width:250px;
+      display:inline-block;
+      vertical-align:top;
+      background:#fff;
+      box-shadow:0 3px 6px rgba(0,0,0,0.1);
+      text-align:center;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    .card:hover {
+      transform: translateY(-5px) scale(1.05);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    }
+    .card.hide {
+      opacity:0;
+      transform:scale(0.9);
+      pointer-events:none;
+      display:none !important;
+    }
+
+    /* Images plats */
+    .card img {
+      width:100%;
+      height:150px;
+      object-fit:cover;
+      border-radius:5px;
+      margin-bottom:10px;
+      filter: brightness(1.05) contrast(1.1) saturate(1.1);
+      transition: transform 0.3s, filter 0.3s;
+    }
+    .card img:hover {
+      transform: scale(1.1);
+      filter: brightness(1.2) contrast(1.2) saturate(1.2);
+    }
+
+    /* Quantité + ajout panier */
+    .qty-add {
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      gap:5px;
+      margin-top:5px;
+    }
+    .qty-add input {
+      width:60px;
+      text-align:center;
+    }
+
+    /* Panier fixe en bas */
+    #panier {
+      position: fixed;
+      bottom:20px;
+      right:20px;
+      background:#f8f9fa;
+      border:1px solid #ddd;
+      padding:15px;
+      width:300px;
+      max-height:60vh;
+      overflow-y:auto;
+      box-shadow:0 3px 6px rgba(0,0,0,0.1);
+      border-radius:5px;
+    }
+    #panier h3 {
+      margin-top:0;
+      text-align:center;
+      color:#007bff;
+    }
+    .panier-item {
+      display:flex;
+      justify-content:space-between;
+      margin-bottom:5px;
+    }
+    .panier-item button {
+      background:red;
+      color:white;
+      border:none;
+      border-radius:3px;
+      cursor:pointer;
+    }
+
+    /* Onglets catégories */
+    .categorie-btn { margin:2px; }
+    .categorie-active { background-color:#007bff !important; color:white !important; }
+
+  /* Animation du plat qui vole */
+.flying-img {
+  position: fixed;
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 5px;
+  z-index: 9999;
+  pointer-events: none;
+  animation: fly-to-cart 0.8s forwards;
+}
+
+@keyframes fly-to-cart {
+  to {
+    transform: translate(var(--x), var(--y)) scale(0.1);
+    opacity: 0;
+  }
+}
+
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="{{ url_for('dashboard.index') }}">
+        <i class="bi bi-egg-fried"></i> Restaurant App
+      </a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Menu">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('dashboard.index') }}"><i class="bi bi-speedometer2"></i> Tableau de bord</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('client.liste_client') }}"><i class="bi bi-people-fill"></i> Clients</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('categorie.liste_categorie') }}"><i class="bi bi-tags-fill"></i> Catégories</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('plat.liste_plats') }}"><i class="bi bi-basket-fill"></i> Plats</a></li>
+          <li class="nav-item"><a class="nav-link" href="{{ url_for('reservation.liste_reservations') }}"><i class="bi bi-calendar-check-fill"></i> Réservations</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <h1>Menu du Restaurant</h1>
+
+  <!-- Onglets catégories -->
+  <div class="text-center mb-4">
+    <button class="btn btn-outline-primary categorie-btn categorie-active" data-cat="all">Tous les plats</button>
+    {% for cat in categories %}
+      <button class="btn btn-outline-secondary categorie-btn" data-cat="{{ cat.categorie_id }}">{{ cat.nom }}</button>
+    {% endfor %}
+  </div>
+
+  <!-- Liste des plats -->
+  <div id="menu">
+    {% for plat in plats %}
+      <div class="card" data-categorie="{{ plat.categorie.categorie_id if plat.categorie else '0' }}">
+        <img src="{{ url_for('static', filename='uploads/' ~ (plat.image_url or 'default.jpg')) }}" alt="{{ plat.nom }}">
+        <h3>{{ plat.nom }}</h3>
+        <p>{{ plat.description }}</p>
+        <p><strong>Prix: ${{ '%.2f'|format(plat.prix) }}</strong></p>
+        <div class="qty-add">
+          <input type="number" min="1" value="1" id="quantite_{{ plat.id_plat }}">
+          <button class="btn btn-success btn-sm" onclick="ajouterPanier({{ plat.id_plat }}, '{{ plat.nom }}', {{ plat.prix }})">
+            <i class="bi bi-cart-plus-fill"></i> Ajouter
+          </button>
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+
+  <!-- Compteur panier dans la navbar -->
+<a class="nav-link position-relative" href="#">
+  <i class="bi bi-cart-fill"></i> Panier
+  <span id="panier-count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">0</span>
+</a>
+
+<!-- Panier flottant -->
+<div id="panier" class="shadow p-3 bg-white rounded">
+  <h5>Mon Panier</h5>
+  <div id="panier-items"></div>
+  <hr>
+  <div class="d-flex justify-content-between"><strong>Total :</strong> <strong>$<span id="total">0.00</span></strong></div>
+  <button class="btn btn-success w-100 mt-2" data-bs-toggle="modal" data-bs-target="#clientModal">Valider</button>
+</div>
+
+
+  <!-- Modale client -->
+  <div class="modal fade" id="clientModal" tabindex="-1" aria-labelledby="clientModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title" id="clientModalLabel">Valider votre commande</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row">
+            <!-- Formulaire client -->
+            <div class="col-md-6">
+              <form id="clientForm">
+                <div class="mb-3">
+                  <label for="client-nom" class="form-label">Nom complet</label>
+                  <input type="text" class="form-control" id="client-nom" placeholder="Entrez votre nom complet" required>
+                </div>
+                <div class="mb-3">
+                  <label for="client-email" class="form-label">Email</label>
+                  <input type="email" class="form-control" id="client-email" placeholder="Entrez votre email" required>
+                </div>
+                <div class="mb-3">
+                  <label for="client-tel" class="form-label">Téléphone</label>
+                  <input type="text" class="form-control" id="client-tel" placeholder="Entrez votre numéro de téléphone" required>
+                </div>
+              </form>
+            </div>
+            <!-- Panier résumé -->
+            <div class="col-md-6">
+              <h6>Résumé du panier</h6>
+              <div id="panier-items-modal" class="mb-2" style="max-height:300px; overflow-y:auto;"></div>
+              <hr>
+              <div class="d-flex justify-content-between">
+                <strong>Total :</strong>
+                <strong>$ <span id="total-modal">0.00</span></strong>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="button" class="btn btn-success" onclick="validerCommandeModal()">Valider et télécharger PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+let panier = [];
+
+// Charger le panier depuis la session
+fetch("{{ url_for('reservation_public.panier_actuel') }}")
+  .then(res => res.json())
+  .then(data => { panier = Array.isArray(data)?data:[]; afficherPanier(); });
+
+function ajouterPanier(id_plat, nom, prix) {
+  const quantiteInput = document.getElementById(`quantite_${id_plat}`);
+  const quantite = parseInt(quantiteInput.value) || 1;
+  const existant = panier.find(item => item.id_plat === id_plat);
+  if (existant) existant.quantite += quantite;
+  else panier.push({ id_plat, nom, prix, quantite });
+
+  // --- Effet "volant" ---
+  const img = document.querySelector(`#quantite_${id_plat}`).closest('.card').querySelector('img');
+  const flyer = img.cloneNode(true);
+  flyer.classList.add('flying-img');
+  document.body.appendChild(flyer);
+
+  const rect = img.getBoundingClientRect();
+  flyer.style.left = rect.left + 'px';
+  flyer.style.top = rect.top + 'px';
+
+  const panierRect = document.getElementById('panier').getBoundingClientRect();
+  flyer.style.setProperty('--x', panierRect.left - rect.left + 'px');
+  flyer.style.setProperty('--y', panierRect.top - rect.top + 'px');
+
+  flyer.addEventListener('animationend', ()=>flyer.remove());
+  // ---------------------
+
+  afficherPanier();
+  sauvegarderPanier();
+}
+
+function afficherPanier() {
+  const panierDiv = document.getElementById('panier-items');
+  panierDiv.innerHTML = '';
+  let total = 0;
+  let totalArticles = 0;
+
+  panier.forEach(item => {
+    total += item.prix * item.quantite;
+    totalArticles += item.quantite;
+
+    const div = document.createElement('div');
+    div.className = 'panier-item d-flex justify-content-between align-items-center mb-1';
+    div.innerHTML = `
+      <span>${item.nom} x ${item.quantite}</span>
+      <span>$${(item.prix*item.quantite).toFixed(2)}</span>
+      <button class="btn btn-sm btn-danger ms-2" onclick="supprimerItem(${item.id_plat})">X</button>
+    `;
+    panierDiv.appendChild(div);
+  });
+
+  // Mettre à jour total et badge
+  document.getElementById('total').innerText = total.toFixed(2);
+  document.getElementById('total-modal').innerText = total.toFixed(2);
+  document.getElementById('panier-items-modal').innerHTML = panierDiv.innerHTML;
+  document.querySelector('#panier h3').innerText = `Mon Panier (${totalArticles})`;
+}
+
+function supprimerItem(id_plat) {
+  panier = panier.filter(item => item.id_plat !== id_plat);
+  afficherPanier();
+  sauvegarderPanier();
+}
+
+function sauvegarderPanier() {
+  fetch("{{ url_for('reservation_public.sauvegarder_panier') }}", {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(panier)
+  });
+}
+
+function validerCommandeModal() {
+  const client = {
+    nom: document.getElementById("client-nom").value,
+    email: document.getElementById("client-email").value,
+    tel: document.getElementById("client-tel").value
+  };
+  if(!client.nom||!client.email||!client.tel){
+    alert("Tous les champs sont obligatoires !");
+    return;
+  }
+
+  fetch("{{ url_for('reservation_public.telecharger_ticket', reservation_id=0) }}", { 
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ client, panier })
+  })
+  .then(res => { if(!res.ok) throw new Error("Erreur serveur"); return res.blob(); })
+  .then(blob => {
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "commande.pdf";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    panier = [];
+    afficherPanier();
+    const modalEl = document.getElementById('clientModal');
+    const modal = bootstrap.Modal.getInstance(modalEl);
+    modal.hide();
+  })
+  .catch(err => alert("Erreur : "+err));
+}
+
+// Filtrage dynamique par catégorie
+document.querySelectorAll('.categorie-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.categorie-btn').forEach(b=>b.classList.remove('categorie-active'));
+    btn.classList.add('categorie-active');
+    const cat = btn.getAttribute('data-cat');
+    document.querySelectorAll('#menu .card').forEach(card=>{
+      if(cat==='all'||card.getAttribute('data-categorie')===cat) card.classList.remove('hide');
+      else card.classList.add('hide');
+    });
+  });
+});
+</script>
+
+
+
+</body>
+</html>

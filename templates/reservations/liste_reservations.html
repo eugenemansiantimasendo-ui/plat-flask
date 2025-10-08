@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Liste des Plats Réservés{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+        <a href="{{ url_for('index') }}" class="btn btn-outline-secondary shadow-sm me-2 mb-2">
+            <i class="bi bi-house-fill"></i> Accueil
+        </a>
+        <h2 class="fw-bold text-primary mb-0">
+            <i class="bi bi-clipboard-check-fill"></i> Plats Réservés
+        </h2>
+    </div>
+
+    <!-- Résumé -->
+    <div class="mb-4 shadow-sm p-3 rounded bg-light d-flex flex-wrap gap-3">
+        <div><strong>Total plats réservés:</strong> <span id="totalPlats">0</span></div>
+        <div><strong>Clients uniques:</strong> <span id="totalClients">0</span></div>
+        <div><strong>Montant total:</strong> $<span id="totalMontant">0.00</span></div>
+    </div>
+
+    <!-- Barre de recherche & export -->
+    <div class="mb-4 d-flex gap-2 flex-wrap">
+        <input type="text" id="recherchePlat" class="form-control shadow-sm" placeholder="Rechercher par nom client ou plat...">
+        <button class="btn btn-primary shadow-sm" onclick="rechercher()"><i class="bi bi-search"></i> Rechercher</button>
+        <button class="btn btn-success shadow-sm" onclick="exportExcel()"><i class="bi bi-file-earmark-spreadsheet"></i> Export Excel</button>
+        <button class="btn btn-danger shadow-sm" onclick="exportPDF()"><i class="bi bi-file-earmark-pdf"></i> Export PDF</button>
+    </div>
+
+    <!-- Tableau -->
+    <div class="table-responsive shadow-sm rounded bg-white p-3">
+        <table class="table table-hover table-bordered align-middle text-center" id="tablePlats">
+            <thead class="table-primary text-center">
+                <tr>
+                    <th onclick="sortTable(0)">ID</th>
+                    <th onclick="sortTable(1)">Client</th>
+                    <th onclick="sortTable(2)">Email</th>
+                    <th onclick="sortTable(3)">Téléphone</th>
+                    <th onclick="sortTable(4)">Plat</th>
+                    <th onclick="sortTable(5)">Quantité</th>
+                    <th onclick="sortTable(6)">Prix Unitaire</th>
+                    <th onclick="sortTable(7)">Total</th>
+                    <th onclick="sortTable(8)">Date Réservation</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody">
+                {% for item in items %}
+                <tr>
+                    <td>{{ item.id_reservation_item }}</td>
+                    <td>{{ item.reservation.client.nom if item.reservation.client else 'Inconnu' }}</td>
+                    <td>{{ item.reservation.client.email if item.reservation.client else '-' }}</td>
+                    <td>{{ item.reservation.client.telephone if item.reservation.client else '-' }}</td>
+                    <td>{{ item.plat.nom if item.plat else 'Plat inconnu' }}</td>
+                    <td>{{ item.quantite }}</td>
+                    <td>${{ item.prix_unitaire or (item.plat.prix if item.plat else 0) }}</td>
+                    <td>${{ (item.prix_unitaire or (item.plat.prix if item.plat else 0)) * item.quantite }}</td>
+                    <td>{{ item.reservation.date_reservation.strftime('%d/%m/%Y') }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted">Aucun plat réservé trouvé.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pagination -->
+    <nav>
+        <ul class="pagination justify-content-center mt-3" id="pagination"></ul>
+    </nav>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.6.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+<script>
+const rowsPerPage = 10;
+let currentPage = 1;
+let currentSortCol = null;
+let asc = true;
+
+// Met à jour le résumé (total plats, clients uniques, montant total)
+function updateSummary() {
+    const rows = Array.from(document.querySelectorAll('#tablePlats tbody tr'))
+                    .filter(r => r.style.display !== 'none' && r.querySelectorAll('td').length>0);
+
+    let totalPlats = 0;
+    let totalMontant = 0;
+    let clientsSet = new Set();
+
+    rows.forEach(r => {
+        const quantite = parseInt(r.children[5].textContent) || 0;
+        const total = parseFloat(r.children[7].textContent.replace(/[^0-9.-]+/g,"")) || 0;
+        const client = r.children[1].textContent.trim();
+
+        totalPlats += quantite;
+        totalMontant += total;
+        if(client) clientsSet.add(client);
+    });
+
+    document.getElementById('totalPlats').textContent = totalPlats;
+    document.getElementById('totalClients').textContent = clientsSet.size;
+    document.getElementById('totalMontant').textContent = totalMontant.toFixed(2);
+}
+
+// Recherche par client ou plat
+function rechercher() {
+    const filtre = document.getElementById('recherchePlat').value.toLowerCase().trim();
+    const lignes = document.querySelectorAll('#tablePlats tbody tr');
+
+    lignes.forEach(ligne => {
+        const cells = ligne.querySelectorAll('td');
+        if(cells.length === 0) return;
+        const nomClient = cells[1].textContent.toLowerCase();
+        const nomPlat = cells[4].textContent.toLowerCase();
+        ligne.style.display = (nomClient.includes(filtre) || nomPlat.includes(filtre)) ? '' : 'none';
+    });
+
+    currentPage = 1;
+    paginate();
+    updateSummary();
+}
+
+// Pagination
+function paginate() {
+    const tbody = document.getElementById('tableBody');
+    const rows = Array.from(tbody.querySelectorAll('tr')).filter(r => r.style.display !== 'none');
+    const totalPages = Math.ceil(rows.length / rowsPerPage);
+
+    rows.forEach(r => r.style.display = 'none');
+    const start = (currentPage - 1) * rowsPerPage;
+    const end = start + rowsPerPage;
+    rows.slice(start, end).forEach(r => r.style.display = '');
+
+    const pagination = document.getElementById('pagination');
+    pagination.innerHTML = '';
+    for(let i=1; i<=totalPages; i++){
+        const li = document.createElement('li');
+        li.className = `page-item ${i===currentPage ? 'active' : ''}`;
+        const a = document.createElement('a');
+        a.className = 'page-link';
+        a.href = '#';
+        a.textContent = i;
+        a.onclick = (e)=>{ e.preventDefault(); currentPage=i; paginate(); updateSummary(); };
+        li.appendChild(a);
+        pagination.appendChild(li);
+    }
+
+    updateSummary();
+}
+
+// Tri dynamique
+function sortTable(colIndex) {
+    const tbody = document.getElementById('tableBody');
+    const rows = Array.from(tbody.querySelectorAll('tr')).filter(r => r.querySelectorAll('td').length>0);
+    
+    if(currentSortCol === colIndex) asc = !asc; else { asc=true; currentSortCol=colIndex; }
+
+    rows.sort((a,b)=>{
+        let aText = a.children[colIndex].textContent.trim();
+        let bText = b.children[colIndex].textContent.trim();
+
+        let aNum = parseFloat(aText.replace(/[^0-9.-]+/g,""));
+        let bNum = parseFloat(bText.replace(/[^0-9.-]+/g,""));
+        if(!isNaN(aNum) && !isNaN(bNum)){
+            return asc ? aNum - bNum : bNum - aNum;
+        }
+
+        return asc ? aText.localeCompare(bText) : bText.localeCompare(aText);
+    });
+
+    rows.forEach(r => tbody.appendChild(r));
+    currentPage = 1;
+    paginate();
+}
+
+// Export Excel
+function exportExcel() {
+    const table = document.getElementById('tablePlats');
+    const wb = XLSX.utils.table_to_book(table, {sheet:"Plats Réservés"});
+    XLSX.writeFile(wb, "plats_reserves.xlsx");
+}
+
+// Export PDF
+function exportPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    doc.autoTable({ html: '#tablePlats', startY: 10 });
+    doc.save('plats_reserves.pdf');
+}
+
+// Initialisation
+document.addEventListener('DOMContentLoaded', () => {
+    paginate();
+    updateSummary();
+});
+</script>
+{% endblock %}

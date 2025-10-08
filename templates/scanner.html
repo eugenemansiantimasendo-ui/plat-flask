@@ -1,0 +1,168 @@
+{% extends "plat/base_client.html" %}
+{% block title %}Scanner QR Multi-Fichiers{% endblock %}
+
+{% block content %}
+<div class="scanner-container" style="position:relative; width:100%; height:100vh; background:#000; overflow:hidden; display:flex; flex-direction:column;">
+
+    <!-- Barre fixe -->
+    <div class="scanner-top-bar" style="position:sticky; top:0; left:0; width:100%; z-index:30; display:flex; justify-content:space-between; align-items:center; padding:10px; background:rgba(0,0,0,0.7);">
+        <span id="camera-label" class="badge bg-primary">Caméra</span>
+        <div style="display:flex; gap:5px;">
+            <button id="toggle-torch" class="btn btn-warning" style="display:none;">💡 Torche</button>
+            <button id="switch-camera" class="btn btn-info">🔄 Caméra</button>
+            <label class="btn btn-secondary mb-0">
+                📂 Importer
+                <input id="file-input" type="file" accept="image/*,.pdf" multiple hidden>
+            </label>
+        </div>
+    </div>
+
+    <!-- Scanner et résultats -->
+    <div id="drop-area" style="flex:1; position:relative; border:2px dashed #444; display:flex; justify-content:center; align-items:center;">
+        <canvas id="imported-canvas" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:10; display:none;"></canvas>
+        <div id="qr-reader" style="width:100%; height:100%; position:relative; z-index:15;"></div>
+        <div class="scanner-overlay" style="position:absolute; top:0; left:0; width:100%; height:100%; z-index:20; pointer-events:none;">
+            <div style="position:absolute; top:50%; left:50%; width:250px; height:250px; margin-left:-125px; margin-top:-125px; border:3px solid #00ff00; border-radius:15px; box-shadow:0 0 20px #00ff00; animation: pulse 1.5s infinite;"></div>
+        </div>
+        <div id="loading-overlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:25; display:flex; align-items:center; justify-content:center;">
+            <div class="spinner-border text-light" role="status"><span class="visually-hidden">Loading...</span></div>
+        </div>
+        <div id="success-animation" style="display:none; position:absolute; top:40%; left:0; width:100%; text-align:center; z-index:30;">
+            <h2 class="text-success">✅ Client servi !</h2>
+        </div>
+        <div id="drop-text" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); color:#fff; font-size:18px;">Glissez-déposez vos fichiers ici</div>
+    </div>
+
+    <!-- Résultat et liste clients servis -->
+    <div style="background:rgba(0,0,0,0.7); color:white; max-height:35%; overflow-y:auto; padding:10px;">
+        <div id="scan-result"></div>
+        <div style="margin-top:10px;">
+            <h5>Clients servis :</h5>
+            <ul id="clients-served-list" style="list-style-type:disc; padding-left:20px;"></ul>
+        </div>
+    </div>
+</div>
+
+<audio id="beep-sound" src="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg"></audio>
+
+<style>
+@keyframes pulse {
+    0% { box-shadow: 0 0 20px #00ff00; }
+    50% { box-shadow: 0 0 40px #00ff00; }
+    100% { box-shadow: 0 0 20px #00ff00; }
+}
+#drop-area.dragover { background: rgba(0,0,0,0.6); }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/html5-qrcode"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+let html5QrCode, cameras=[], currentCameraIndex=0, currentCameraId=null, torchOn=false;
+
+async function initScanner(){
+    cameras = await Html5Qrcode.getCameras();
+    if(!cameras.length){ alert("Aucune caméra détectée."); return; }
+
+    const rearIndex = cameras.findIndex(c => c.label.toLowerCase().includes("back"));
+    currentCameraIndex = rearIndex!==-1 ? rearIndex : 0;
+    currentCameraId = cameras[currentCameraIndex].id;
+
+    html5QrCode = new Html5Qrcode("qr-reader");
+    document.getElementById("toggle-torch").style.display="inline-block";
+    updateCameraLabel();
+    startScanning();
+
+    document.getElementById("toggle-torch").addEventListener("click", toggleTorch);
+    document.getElementById("switch-camera").addEventListener("click", switchCamera);
+    document.getElementById("file-input").addEventListener("change", handleFiles);
+
+    const dropArea = document.getElementById("drop-area");
+    dropArea.addEventListener("dragover", e=>{ e.preventDefault(); dropArea.classList.add("dragover"); });
+    dropArea.addEventListener("dragleave", e=>{ dropArea.classList.remove("dragover"); });
+    dropArea.addEventListener("drop", e=>{ e.preventDefault(); dropArea.classList.remove("dragover"); handleFiles({target:{files:e.dataTransfer.files}}); });
+}
+
+function showLoading(show=true){ document.getElementById("loading-overlay").style.display = show?"flex":"none"; }
+async function startScanning(){ showLoading(false); await html5QrCode.start(currentCameraId,{fps:10,qrbox:{width:250,height:250},experimentalFeatures:{useBarCodeDetectorIfSupported:true}}, onScanSuccess); }
+async function stopScanning(){ if(html5QrCode) await html5QrCode.stop(); }
+async function switchCamera(){ await stopScanning(); currentCameraIndex=(currentCameraIndex+1)%cameras.length; currentCameraId=cameras[currentCameraIndex].id; updateCameraLabel(); startScanning(); }
+function updateCameraLabel(){ document.getElementById("camera-label").textContent=`🎥 ${cameras[currentCameraIndex]?.label||"Caméra inconnue"}`; }
+async function toggleTorch(){ try{ const caps = await html5QrCode.getRunningTrackCapabilities(); if(caps.torch){ torchOn=!torchOn; await html5QrCode.applyVideoConstraints({advanced:[{torch:torchOn}]}); }else alert("Torche non disponible"); }catch(e){ console.error(e); } }
+
+function onScanSuccess(decodedText){
+    document.getElementById("beep-sound").play().catch(()=>{});
+    if(navigator.vibrate) navigator.vibrate(200);
+
+    fetch("{{ url_for('reservation_public.scanner_verify') }}",{method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({qr_data:decodedText})})
+    .then(res=>res.json()).then(data=>{
+        if(!data.success){ document.getElementById("scan-result").innerHTML=`<div class="alert alert-danger">${data.message}</div>`; return; }
+
+        let html=`<h4>Client: ${data.client.nom}</h4><p>Email: ${data.client.email}</p><p>Téléphone: ${data.client.tel}</p><h5>Plats réservés:</h5><ul>`;
+        data.items.forEach(item=> html+=`<li>${item.plat} x ${item.quantite} - $${(item.prix*item.quantite).toFixed(2)}</li>`);
+        html+=`</ul><h5>Total: $${data.total.toFixed(2)}</h5><button class="btn btn-success w-100" onclick="servirClient(${data.reservation_id},'${data.client.nom}')">✅ Servir</button>`;
+        document.getElementById("scan-result").innerHTML=html;
+    }).catch(err=>console.error(err));
+}
+
+function servirClient(id, clientName){
+    fetch(`{{ url_for('reservation_public.scanner_serve', reservation_id=0) }}`.replace("0",id),{method:"POST"})
+    .then(res=>res.json()).then(data=>{
+        if(data.success){
+            document.getElementById("success-animation").style.display="block";
+            setTimeout(()=>{ document.getElementById("success-animation").style.display="none"; },1500);
+            document.getElementById("scan-result").innerHTML="";
+            const li=document.createElement("li"); li.textContent=clientName+" ✅"; document.getElementById("clients-served-list").appendChild(li);
+        } else alert("Erreur: "+data.message);
+    }).catch(err=>console.error(err));
+}
+
+// -----------------------------
+// Gestion multi-fichiers et multi-pages PDF
+// -----------------------------
+async function handleFiles(event){
+    const files = event.target.files;
+    if(!files || !files.length) return;
+
+    const canvas = document.getElementById("imported-canvas");
+    const ctx = canvas.getContext("2d");
+
+    for(const file of files){
+        if(file.type==="application/pdf"){
+            const reader = new FileReader();
+            reader.onload = async function(){
+                const pdfData = new Uint8Array(this.result);
+                const pdf = await pdfjsLib.getDocument({data:pdfData}).promise;
+
+                for(let pageNum=1; pageNum<=pdf.numPages; pageNum++){
+                    const page = await pdf.getPage(pageNum);
+                    const viewport = page.getViewport({scale:2});
+                    canvas.width = viewport.width;
+                    canvas.height = viewport.height;
+                    canvas.style.display="block";
+
+                    await page.render({canvasContext:ctx, viewport}).promise;
+
+                    // Convertir le canvas en Blob et scanner
+                    await new Promise(resolve=>{
+                        canvas.toBlob(async function(blob){
+                            if(!blob){ console.warn("Impossible de scanner la page "+pageNum); resolve(); return; }
+                            try {
+                                await html5QrCode.scanFile(blob,true).then(onScanSuccess).catch(()=>console.log("Aucun QR code sur page "+pageNum));
+                            } catch(e){ console.error(e); }
+                            resolve();
+                        }, "image/png");
+                    });
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        } else {
+            html5QrCode.scanFile(file,true).then(onScanSuccess).catch(()=>alert("Aucun QR code trouvé dans l'image."));
+        }
+    }
+}
+
+window.addEventListener("DOMContentLoaded", initScanner);
+</script>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Modifier le client{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <!-- Card centrée -->
+    <div class="card shadow border-0 rounded-4 mx-auto" style="max-width: 600px;">
+        <div class="card-header bg-primary text-white text-center py-3 rounded-top-4">
+            <h4 class="mb-0"><i class="bi bi-pencil-fill"></i> Modifier le client</h4>
+        </div>
+        <div class="card-body p-4">
+
+            <form method="POST" action="{{ url_for('client.modifier_client', id=client.id_client) }}">
+
+                <!-- Nom complet -->
+                <div class="mb-4">
+                    <label for="nom" class="form-label fw-semibold">
+                        <i class="bi bi-person-fill"></i> Nom complet
+                    </label>
+                    <input type="text" class="form-control form-control-lg rounded-3" 
+                           id="nom" name="nom" value="{{ client.nom|e }}" required>
+                </div>
+
+                <!-- Email -->
+                <div class="mb-4">
+                    <label for="email" class="form-label fw-semibold">
+                        <i class="bi bi-envelope-fill"></i> Adresse Email
+                    </label>
+                    <input type="email" class="form-control form-control-lg rounded-3" 
+                           id="email" name="email" value="{{ client.email|e }}" required>
+                </div>
+
+                <!-- Téléphone -->
+                <div class="mb-4">
+                    <label for="telephone" class="form-label fw-semibold">
+                        <i class="bi bi-telephone-fill"></i> Numéro de téléphone
+                    </label>
+                    <input type="tel" class="form-control form-control-lg rounded-3" 
+                           id="telephone" name="telephone" value="{{ client.telephone|e }}">
+                </div>
+
+                <!-- Boutons -->
+                <div class="d-flex justify-content-between gap-3">
+                    <a href="{{ url_for('client.liste_client') }}" class="btn btn-outline-secondary btn-lg">
+                        <i class="bi bi-x-circle"></i> Annuler
+                    </a>
+                    <button type="submit" class="btn btn-primary btn-lg fw-bold">
+                        <i class="bi bi-save-fill"></i> Mettre à jour
+                    </button>
+                </div>
+            </form>
+
+        </div>
+    </div>
+</div>
+
+<style>
+/* Card shadow & hover */
+.card {
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 25px rgba(0,0,0,0.15);
+}
+
+/* Input focus */
+.form-control:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 8px rgba(13,110,253,0.25);
+    transition: all 0.2s;
+}
+
+/* Header */
+.card-header {
+    background: #0d6efd;
+}
+
+/* Buttons hover */
+.btn-primary {
+    transition: all 0.3s;
+}
+.btn-primary:hover {
+    background: #0b5ed7;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(0,0,0,0.2);
+}
+.btn-outline-secondary:hover {
+    background-color: #f1f1f1;
+}
+</style>
+{% endblock %}

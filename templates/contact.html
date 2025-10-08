@@ -1,0 +1,214 @@
+{% extends "plat/base_client.html" %}
+
+{% block title %}Contactez-nous{% endblock %}
+
+{% block styles %}
+<style>
+/* Container général */
+.contact-container {
+    max-width: 1000px;
+    margin: 40px auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 30px;
+    justify-content: center;
+}
+
+/* Formulaire */
+.contact-form {
+    flex: 1 1 400px;
+    background: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+    position: relative;
+}
+
+.contact-form h2 {
+    font-weight: 700;
+    margin-bottom: 20px;
+    color: #007bff;
+    text-align: center;
+}
+
+.contact-form .form-control {
+    border-radius: 6px;
+    padding: 10px 15px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.contact-form .form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 5px rgba(0,123,255,0.3);
+}
+
+/* Bouton animé */
+.contact-form .btn-submit {
+    width: 100%;
+     background: linear-gradient(180deg, #0d6efd, #6610f2);
+    color: #fff;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 10px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.contact-form .btn-submit:hover {
+    background-color: black;
+    transform: scale(1.05);
+}
+
+.contact-form .btn-submit.sent {
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
+    color: #fff;
+    pointer-events: none;
+}
+
+.contact-form .btn-submit.sent::after {
+    content: "✔";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.2rem;
+    opacity: 0;
+    animation: checkAnim 0.5s forwards;
+}
+
+@keyframes checkAnim {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5);}
+    50% { opacity: 1; transform: translate(-50%, -50%) scale(1.2);}
+    100% { opacity: 1; transform: translate(-50%, -50%) scale(1);}
+}
+
+/* Infos contact */
+.contact-info {
+    flex: 1 1 400px;
+    background: #fff;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.contact-info h3 {
+    color: #007bff;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.contact-info p {
+    margin-bottom: 10px;
+    font-size: 1rem;
+}
+
+.contact-info i {
+    color: #007bff;
+    margin-right: 10px;
+}
+
+/* Carte Google Maps */
+.map-container {
+    margin-top: 20px;
+    height: 300px;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+/* Flash messages */
+.flash-message {
+    margin-bottom: 15px;
+    padding: 10px 15px;
+    border-radius: 6px;
+    font-weight: 500;
+    text-align: center;
+    transition: all 0.3s;
+}
+.flash-success { background-color: #d4edda; color: #155724; }
+.flash-error { background-color: #f8d7da; color: #721c24; }
+
+/* Responsive */
+@media (max-width:768px) {
+    .contact-container {
+        flex-direction: column;
+        margin: 20px;
+    }
+    .map-container { height: 250px; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="contact-container">
+
+    <!-- Formulaire -->
+    <div class="contact-form">
+        <h2>Contactez-nous</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="flash-message flash-{{ category }}">{{ message }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('client.contact') }}">
+            <div class="mb-3">
+                <label for="nom" class="form-label">Nom complet</label>
+                <input type="text" class="form-control" id="nom" name="nom" placeholder="Votre nom" required>
+            </div>
+            <div class="mb-3">
+                <label for="email" class="form-label">Adresse Email</label>
+                <input type="email" class="form-control" id="email" name="email" placeholder="Votre email" required>
+            </div>
+            <div class="mb-3">
+                <label for="message" class="form-label">Message</label>
+                <textarea class="form-control" id="message" name="message" rows="5" placeholder="Votre message..." required></textarea>
+            </div>
+            <button type="submit" class="btn btn-submit">Envoyer le message</button>
+        </form>
+    </div>
+
+    <!-- Infos contact et carte -->
+    <div class="contact-info">
+        <h3>Nos coordonnées</h3>
+        <p><i class="bi bi-geo-alt-fill"></i> Avenue Lumingu n°2, Quartier Nzanza, Matadi, Kongo Central, RDC</p>
+        <p><i class="bi bi-telephone-fill"></i> +243 897 653 728</p>
+        <p><i class="bi bi-envelope-fill"></i> eugenemansiantimasendo@gmail.com</p>
+
+        <div class="map-container">
+            <iframe
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3989.307619182267!2d13.45538927614291!3d-5.817918643645909!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x1a5e2a72c02e4d77%3A0x9b1d6c8883a7f4b4!2sNzanza%2C%20Matadi!5e0!3m2!1sfr!2src!4v1695831600000!5m2!1sfr!2src"
+                width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade">
+            </iframe>
+        </div>
+    </div>
+
+</div>
+
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('.contact-form form');
+    const btn = document.querySelector('.btn-submit');
+
+    form.addEventListener('submit', function(e) {
+        // Animation du bouton
+        btn.classList.add('sent');
+
+        // Soumission du formulaire après animation
+        setTimeout(() => {
+            form.submit();
+        }, 600);
+    });
+});
+</script>
+{% endblock %}

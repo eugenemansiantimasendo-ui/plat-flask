@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}Clients Servis{% endblock %}
+
+{% block extra_head %}
+<!-- DataTables CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/jquery.dataTables.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <h1 class="mb-4 text-center">📋 Clients Servis</h1>
+
+    <div class="card shadow">
+        <div class="card-header bg-success text-white">
+            Liste des clients ayant été servis
+        </div>
+        <div class="card-body table-responsive">
+            <table id="clientsTable" class="table table-hover table-sm display">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Nom</th>
+                        <th>Email</th>
+                        <th>Téléphone</th>
+                        <th>Total réservations servies</th>
+                        <th>Dernière réservation (date & heure)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for client in clients %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>{{ client.nom }}</td>
+                        <td>{{ client.email }}</td>
+                        <td>{{ client.telephone or '-' }}</td>
+                        <td>{{ client.reservations|selectattr('status', 'equalto', 'Servi')|list|length }}</td>
+                        <td>
+                            {% set last_res = client.reservations|selectattr('status', 'equalto', 'Servi')|list|sort(attribute='date_reservation')|last %}
+                            {% if last_res %}
+                                {{ last_res.date_reservation.strftime('%d/%m/%Y') }} {{ last_res.heure_reservation.strftime('%H:%M') }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center">Aucun client servi pour le moment.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% set today = current_date %}
+{% if last_res and last_res.date_reservation == today %}
+    <span class="badge bg-info text-dark ms-1">AUJOURD’HUI</span>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- jQuery et DataTables JS -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script>
+$(document).ready(function() {
+    $('#clientsTable').DataTable({
+        "order": [[5, "desc"]], // Trier par dernière réservation décroissante
+        "language": {
+            "url": "//cdn.datatables.net/plug-ins/1.13.6/i18n/fr-FR.json"
+        }
+    });
+});
+</script>
+{% endblock %}

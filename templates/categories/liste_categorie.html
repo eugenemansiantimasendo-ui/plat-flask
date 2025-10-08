@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Liste des catégories{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show shadow-sm" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Boutons Accueil & Ajouter -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-secondary shadow-sm">
+            <i class="bi bi-house-fill"></i> Accueil
+        </a>
+        <a href="{{ url_for('categorie.ajouter_categorie') }}" class="btn btn-primary shadow-sm">
+            <i class="bi bi-plus-circle"></i> Ajouter une catégorie
+        </a>
+    </div>
+
+    <!-- Titre principal -->
+    <div class="text-center mb-4">
+        <h2 class="fw-bold text-primary">
+            <i class="bi bi-tags-fill"></i> Liste des catégories
+        </h2>
+        <p class="text-muted">Gérez facilement vos catégories enregistrées</p>
+    </div>
+
+    <!-- Tableau des catégories -->
+    <div class="card shadow-lg border-0 rounded-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-primary text-white">
+                        <tr>
+                            <th scope="col">ID</th>
+                            <th scope="col">Nom</th>
+                            <th scope="col" class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cat in categories %}
+                        <tr>
+                            <td>{{ cat.categorie_id }}</td>
+                            <td class="fw-semibold">{{ cat.nom or '-' }}</td>
+                            <td class="text-center">
+                                <a href="{{ url_for('categorie.modifier_categorie', id=cat.categorie_id) }}" 
+                                   class="btn btn-sm btn-outline-warning me-1" data-bs-toggle="tooltip" title="Modifier">
+                                    <i class="bi bi-pencil-fill"></i>
+                                </a>
+                                <form action="{{ url_for('categorie.supprimer_categorie', id=cat.categorie_id) }}" method="POST" class="d-inline" 
+                                      onsubmit="return confirm('Voulez-vous vraiment supprimer cette catégorie ?');">
+                                    <button class="btn btn-sm btn-outline-danger" data-bs-toggle="tooltip" title="Supprimer">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" class="text-center text-muted py-4">
+                                <i class="bi bi-exclamation-circle"></i> Aucune catégorie disponible
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Card hover */
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 25px rgba(0,0,0,0.1);
+    transition: all 0.3s;
+}
+
+/* Table hover */
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.1);
+    transition: background-color 0.3s;
+}
+
+/* Buttons hover */
+.btn-outline-warning:hover {
+    background-color: #ffc107;
+    color: #000;
+}
+.btn-outline-danger:hover {
+    background-color: #dc3545;
+    color: #fff;
+}
+
+/* Header couleur plus élégante */
+.table-primary {
+    background: linear-gradient(90deg, #0d6efd, #6610f2);
+}
+.table-primary th {
+    color: #fff;
+}
+</style>
+{% endblock %}
