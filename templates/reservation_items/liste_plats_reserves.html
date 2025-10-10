@@ -5,13 +5,14 @@
 {% block content %}
 <div class="container mt-4">
 
-    <!-- Barre de recherche -->
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
-        <a href="{{ url_for('index') }}" class="btn btn-secondary shadow-sm mb-2">
-            <i class="bi bi-house-fill"></i> Accueil
-        </a>
-        <input type="text" id="searchInput" class="form-control w-50 mb-2" placeholder="Rechercher...">
-    </div>
+   <!-- Barre de recherche -->
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+    <a href="{{ url_for('aide') }}" class="btn btn-secondary shadow-sm mb-2">
+        <i class="bi bi-house-fill"></i> Accueil
+    </a>
+    <input type="text" id="searchInput" class="form-control w-50 mb-2" placeholder="Rechercher...">
+</div>
+
 
     <!-- Titre -->
     <div class="text-center mb-4">
@@ -72,9 +73,9 @@
                     <td>
                         <a href="javascript:void(0);" 
                            class="text-primary fw-bold" 
-                           onclick="showClientInfo('{{ item.reservation.client.nom }}',
-                                                    '{{ item.reservation.client.email }}',
-                                                    '{{ item.reservation.client.telephone }}',
+                           onclick="showClientInfo('{{ item.reservation.client.nom|escapejs }}',
+                                                    '{{ item.reservation.client.email|escapejs }}',
+                                                    '{{ item.reservation.client.telephone|escapejs }}',
                                                     '{{ item.reservation.client.id_client }}')">
                             {{ item.reservation.client.nom }}
                         </a>
@@ -136,6 +137,7 @@
     {% endif %}
 
 </div>
+
 <!-- Modal client -->
 <div class="modal fade" id="clientModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -206,8 +208,6 @@ function showClientInfo(nom, email, tel, clientId) {
             if (Array.isArray(data) && data.length > 0) {
                 data.forEach(cmd => {
                     let montant = parseFloat(cmd.total).toFixed(2);
-
-                    // Si c'est le total général
                     if (cmd.plat === "TOTAL") {
                         historyList.innerHTML += `
                             <li class="list-group-item d-flex justify-content-between align-items-center fw-bold bg-light" 
@@ -218,9 +218,7 @@ function showClientInfo(nom, email, tel, clientId) {
                     } else {
                         historyList.innerHTML += `
                             <li class="list-group-item d-flex justify-content-between align-items-center">
-                                <div>
-                                    <strong>${cmd.date}</strong> — ${cmd.plat}
-                                </div>
+                                <div><strong>${cmd.date}</strong> — ${cmd.plat}</div>
                                 <span class="badge bg-success rounded-pill">${montant} $</span>
                             </li>`;
                     }
@@ -236,7 +234,6 @@ function showClientInfo(nom, email, tel, clientId) {
 
     new bootstrap.Modal(document.getElementById("clientModal")).show();
 }
-
 </script>
 
 <style>
@@ -247,8 +244,7 @@ function showClientInfo(nom, email, tel, clientId) {
         z-index: 10;
     }
     .table-header-custom th {
-        background-color: #0d6efd;
-        color: black !important;
+        color: #fff !important;
         text-align: center;
         vertical-align: middle;
         padding: 12px;

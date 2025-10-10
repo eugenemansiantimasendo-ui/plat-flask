@@ -2,21 +2,26 @@ from flask import Blueprint, render_template, request, jsonify
 from models import db, ReservationItem, Reservation, Client, Plat
 from sqlalchemy import or_, func
 
+# -------------------------------
+# Blueprint Reservation Items
+# -------------------------------
 reservation_items_bp = Blueprint(
     'reservation_items',
     __name__,
-    template_folder='templates/reservation_items'
+    template_folder='templates/reservation_items',
+    url_prefix='/index'  # <-- route principale harmonisée
 )
 
-# -----------------------------
+# -------------------------------
 # Liste des plats réservés
-# -----------------------------
+# -------------------------------
 @reservation_items_bp.route('/', methods=['GET'])
 def list_reservation_items():
     page = request.args.get('page', 1, type=int)
     per_page = 10
     search = request.args.get('search', '').strip()
 
+    # Construction de la requête principale
     query = (
         ReservationItem.query
         .join(ReservationItem.reservation)
@@ -35,10 +40,11 @@ def list_reservation_items():
             )
         )
 
+    # Pagination
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
     items = pagination.items
 
-    # Totaux
+    # Totaux quantités
     total_qte_query = db.session.query(func.sum(ReservationItem.quantite)) \
         .join(ReservationItem.reservation) \
         .join(ReservationItem.plat) \
@@ -54,6 +60,7 @@ def list_reservation_items():
         )
     total_qte = total_qte_query.scalar() or 0
 
+    # Montant total
     montant_total_query = db.session.query(func.sum(ReservationItem.quantite * Plat.prix)) \
         .join(ReservationItem.reservation) \
         .join(ReservationItem.plat) \
@@ -69,7 +76,7 @@ def list_reservation_items():
         )
     montant_total = float(montant_total_query.scalar() or 0.0)
 
-    # Clients uniques
+    # Nombre de clients uniques
     clients_query = db.session.query(Client.id_client) \
         .distinct() \
         .join(Reservation) \
@@ -86,6 +93,7 @@ def list_reservation_items():
         )
     clients = clients_query.count()
 
+    # Rendu template
     return render_template(
         'reservation_items/liste_plats_reserves.html',
         items=items,
@@ -96,9 +104,9 @@ def list_reservation_items():
         clients=clients
     )
 
-# -----------------------------
+# -------------------------------
 # Historique d’un client (AJAX)
-# -----------------------------
+# -------------------------------
 @reservation_items_bp.route('/client_history/<int:client_id>', methods=['GET'])
 def client_history(client_id):
     client = Client.query.get_or_404(client_id)

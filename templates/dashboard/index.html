@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Restaurant{% endblock %}
+{% block title %}Index - Restaurant{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
@@ -12,7 +12,7 @@
     <div class="row g-4 mb-5">
         {% set cards = [
             {'title':'Clients','count':nb_clients,'icon':'bi-people-fill','color':'primary','url':url_for('client.liste_client')},
-            {'title':'Plats','count':nb_plats,'icon':'bi-egg-fried','color':'success','url':url_for('plat.liste_plats')},
+            {'title':'Plats','count':nb_plats,'icon':'bi-egg-fill','color':'success','url':url_for('plat.liste_plats')},
             {'title':'Catégories','count':nb_categories,'icon':'bi-tags','color':'info','url':url_for('categorie.liste_categorie')},
             {'title':'Réservations','count':nb_reservations,'icon':'bi-receipt-cutoff','color':'warning','url':url_for('reservation.liste_reservations')},
             {'title':'Plats réservés','count':nb_serv_items,'icon':'bi-list-ul','color':'dark','url':url_for('reservation_items.list_reservation_items')},

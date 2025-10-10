@@ -1,20 +1,22 @@
-# app.py
+import os
 from flask import Flask, render_template, redirect, url_for, request, flash, g, session
 from werkzeug.security import generate_password_hash
 from flask_mail import Message
+from datetime import datetime
+from sqlalchemy import func
 
 # -------------------------------
 # Import des extensions et modèles
 # -------------------------------
 from extensions import db, migrate, mail
-from models import Plat, Categorie, Contact, Reservation, Avis, Client
+from models import Plat, Categorie, Contact, Reservation, Avis, Client, ReservationItem
 
 # -------------------------------
 # Import des Blueprints
 # -------------------------------
 from routes.categorie import categorie_bp
 from routes.clients import client_bp
-from routes.dashboard import dashboard_bp
+from routes.index import index_bp
 from routes.plat import plat_bp
 from routes.reservation_items import reservation_items_bp
 from routes.reservations import reservation_bp
@@ -30,22 +32,23 @@ def create_app():
     # -------------------------------
     # Configuration BDD et Mail
     # -------------------------------
-    app.config.update(
-        SQLALCHEMY_DATABASE_URI='postgresql://mansiantima:issaelde@localhost:5432/db_reservation',
-        SQLALCHEMY_TRACK_MODIFICATIONS=False,
-        SECRET_KEY='super-secret-key',
-        MAIL_SERVER='smtp.gmail.com',
-        MAIL_PORT=587,
-        MAIL_USE_TLS=True,
-        MAIL_USERNAME='ton.email@gmail.com',  # à remplacer
-        MAIL_PASSWORD='ton_mot_de_passe'      # à remplacer
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
+        'SQLALCHEMY_DATABASE_URI',
+        'postgresql://mansiantima:issaelde@localhost:5432/db_reservation'
     )
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'super-secret-key')
+    app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+    app.config['MAIL_PORT'] = 587
+    app.config['MAIL_USE_TLS'] = True
+    app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')
+    app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')
 
     # -------------------------------
     # Initialisation des extensions
     # -------------------------------
     db.init_app(app)
-    migrate.init_app(app, db)  # initialisation de Flask-Migrate
+    migrate.init_app(app, db)
     mail.init_app(app)
 
     # -------------------------------
@@ -54,14 +57,10 @@ def create_app():
     @app.before_request
     def load_logged_in_client():
         client_id = session.get('client_id')
-        if client_id:
-            g.client = Client.query.get(client_id)
-        else:
-            g.client = None
+        g.client = Client.query.get(client_id) if client_id else None
 
     @app.context_processor
     def inject_current_user():
-        """Ajoute current_user au contexte Jinja pour éviter les erreurs dans les templates"""
         return dict(current_user=g.client)
 
     # -------------------------------
@@ -83,7 +82,7 @@ def create_app():
     # -------------------------------
     # Enregistrement des Blueprints
     # -------------------------------
-    app.register_blueprint(dashboard_bp, url_prefix='/dashboard')
+    app.register_blueprint(index_bp, url_prefix='/dashboard')
     app.register_blueprint(client_bp, url_prefix='/clients')
     app.register_blueprint(plat_bp, url_prefix='/plats-admin')
     app.register_blueprint(categorie_bp, url_prefix='/categories')
@@ -93,41 +92,80 @@ def create_app():
     app.register_blueprint(reservation_public_bp, url_prefix='/reservation-public')
 
     # -------------------------------
-    # Routes principales
+    # Routes publiques
     # -------------------------------
     @app.route('/')
-    def index():
-        return redirect(url_for('dashboard.index'))
+    def home():
+        nb_clients = Client.query.count()
+        nb_plats = Plat.query.count()
+        nb_categories = Categorie.query.count()
+        nb_reservations = Reservation.query.count()
+        nb_serv_items = ReservationItem.query.count()
+
+        nb_clients_servis = db.session.query(Client.id_client)\
+            .join(Reservation, Reservation.id_client == Client.id_client)\
+            .distinct().count()
+
+        derniers_clients = Client.query.order_by(Client.date_creation.desc()).limit(5).all()
+        dernieres_reservations = Reservation.query.order_by(Reservation.date_reservation.desc()).limit(5).all()
+
+        mois_labels = [datetime(2025, m, 1).strftime('%B') for m in range(1, 13)]
+        reservations_par_mois = [
+            Reservation.query.filter(func.extract('month', Reservation.date_reservation) == m).count()
+            for m in range(1, 13)
+        ]
+
+        categories = Categorie.query.all()
+        top_categories = {
+            "labels": [cat.nom for cat in categories],
+            "data": [len(cat.plats) if hasattr(cat, 'plats') else 0 for cat in categories]
+        }
+
+        return render_template(
+            'dashboard/index.html',
+            nb_clients=nb_clients,
+            nb_plats=nb_plats,
+            nb_categories=nb_categories,
+            nb_reservations=nb_reservations,
+            nb_serv_items=nb_serv_items,
+            nb_clients_servis=nb_clients_servis,
+            derniers_clients=derniers_clients,
+            dernieres_reservations=dernieres_reservations,
+            mois_labels=mois_labels,
+            reservations_par_mois=reservations_par_mois,
+            top_categories=top_categories,
+            plats=Plat.query.all()
+        )
 
     @app.route('/contact', methods=['GET', 'POST'])
     def contact():
         if request.method == 'POST':
-            nom = request.form.get('nom')
-            email = request.form.get('email')
-            message_text = request.form.get('message')
-            agent_email = request.form.get('agent')
+            nom = request.form.get('nom', '').strip()
+            email = request.form.get('email', '').strip()
+            message_text = request.form.get('message', '').strip()
+            agent_email = request.form.get('agent', '').strip()
 
             if not nom or not email or not message_text:
                 flash("Veuillez remplir tous les champs.", "danger")
                 return redirect(url_for('contact'))
 
             try:
-                nouveau_message = Contact(
+                contact_msg = Contact(
                     nom=nom,
                     email=email,
                     message=message_text,
-                    agent=agent_email
+                    agent=agent_email or None
                 )
-                db.session.add(nouveau_message)
+                db.session.add(contact_msg)
                 db.session.commit()
 
-                # Envoi de mail à l’agent
                 if agent_email:
                     msg = Message(
                         subject=f"Nouveau message de {nom}",
                         sender=app.config['MAIL_USERNAME'],
                         recipients=[agent_email],
-                        body=f"Vous avez reçu un nouveau message :\n\nNom : {nom}\nEmail : {email}\nMessage :\n{message_text}"
+                        body=f"Vous avez reçu un nouveau message :\n\n"
+                             f"Nom : {nom}\nEmail : {email}\nMessage :\n{message_text}"
                     )
                     mail.send(msg)
 
@@ -135,12 +173,16 @@ def create_app():
 
             except Exception as e:
                 db.session.rollback()
-                print("Erreur BDD ou email:", e)
+                app.logger.error(f"Erreur BDD ou email: {e}")
                 flash("Une erreur est survenue, veuillez réessayer.", "danger")
 
             return redirect(url_for('contact'))
 
         return render_template('contact.html')
+
+    @app.route('/aide')
+    def aide():
+        return render_template('aide.html')
 
     # -------------------------------
     # Gestion des erreurs
@@ -154,7 +196,7 @@ def create_app():
         return render_template('errors/500.html'), 500
 
     # -------------------------------
-    # Hashage des mots de passe temporaires
+    # Commande CLI : hashage des mots de passe
     # -------------------------------
     @app.cli.command('hash_temp_passwords')
     def hasher_mots_de_passe_temporaire():
@@ -162,28 +204,24 @@ def create_app():
         if not clients_temp:
             print("Aucun mot de passe temporaire trouvé.")
             return
-
         for client in clients_temp:
             client.mot_de_passe = generate_password_hash("motdepasse_temporaire")
             print(f"Mot de passe hashé pour : {client.email}")
-
         db.session.commit()
         print("Tous les mots de passe temporaires ont été hashés.")
-
-    # -------------------------------
-    # Page d’aide
-    # -------------------------------
-    @app.route('/aide')
-    def aide():
-        return render_template('aide.html')
 
     return app
 
 # -------------------------------
-# Lancement de l'application
+# Instance globale
 # -------------------------------
+app = create_app()
+
+
 if __name__ == '__main__':
-    app = create_app()
     with app.app_context():
-        db.create_all()  # S’assure que la base est prête
-    app.run(host='0.0.0.0', port=5000, debug=True)
+        db.create_all()  # Création automatique des tables si elles n'existent pas
+
+    port = int(os.environ.get("PORT", 5000))  # Port dynamique pour Render
+    app.run(debug=False, host='0.0.0.0', port=port)
+

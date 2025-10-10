@@ -3,7 +3,6 @@
 {% block title %}Ticket #{{ reservation.id_reservation }}{% endblock %}
 
 {% block content %}
-
 <div class="ticket-wrapper mx-auto my-4 p-0" style="max-width: 380px; font-family: 'Courier New', monospace; background: #fff; border: 1px solid #ccc; border-radius: 5px; box-shadow: 2px 2px 8px rgba(0,0,0,0.1);">
 
   <!-- Header -->
@@ -18,9 +17,9 @@
   <!-- Client & QR Code -->
   <div class="ticket-body p-2">
     <strong>Client:</strong><br>
-    {{ client.nom if client else "Inconnu" }}<br>
-    {{ client.email if client else "Inconnu" }}<br>
-    {{ client.telephone if client else "Inconnu" }}<br>
+    {{ reservation.nom_client }} {{ reservation.prenom_client }}<br>
+    {{ reservation.email_client }}<br>
+    {{ reservation.telephone_client }}<br>
 
     <div class="text-center my-2">
       <img src="data:image/png;base64,{{ qr_b64 }}" alt="QR Code" style="max-width: 120px;">
@@ -66,7 +65,6 @@
   #ticket-actions { display: none !important; }
 }
 </style>
-
 {% endblock %}
 
 {% block scripts %}

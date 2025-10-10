@@ -4,7 +4,10 @@ from sqlalchemy import func, extract, desc
 import calendar
 from datetime import datetime, timedelta
 
-dashboard_bp = Blueprint('dashboard', __name__, template_folder='../templates/dashboard')
+# ---------------------------
+# Blueprint 'index'
+# ---------------------------
+index_bp = Blueprint('index', __name__, template_folder='../templates/dashboard')
 
 # ---------------------------
 # Dictionnaire des devises
@@ -16,15 +19,17 @@ DEVISES = {
     "EUR": "€"
 }
 
-@dashboard_bp.route('/')
+@index_bp.route('/', endpoint='dashboard_index')
 def index():
-    # Récupérer devise choisie (par défaut USD)
+    # ---------------------------
+    # Devise sélectionnée
+    # ---------------------------
     devise = request.args.get("devise", "USD")
     symbole = DEVISES.get(devise, "$")
 
-    # ----------------------
+    # ---------------------------
     # Comptages généraux
-    # ----------------------
+    # ---------------------------
     nb_clients = Client.query.count()
     nb_plats = Plat.query.count()
     nb_categories = Categorie.query.count()
@@ -32,24 +37,24 @@ def index():
     nb_serv_items = ReservationItem.query.count()
     nb_clients_servis = Reservation.query.filter_by(status="Servi").count()
 
-    # ----------------------
+    # ---------------------------
     # Derniers clients et réservations
-    # ----------------------
+    # ---------------------------
     derniers_clients = Client.query.order_by(Client.date_creation.desc()).limit(5).all()
     dernieres_reservations = Reservation.query.order_by(Reservation.date_reservation.desc()).limit(5).all()
 
-    # ----------------------
+    # ---------------------------
     # Graphiques par mois
-    # ----------------------
+    # ---------------------------
     mois_labels = [calendar.month_name[i] for i in range(1, 13)]
     reservations_par_mois = [
         Reservation.query.filter(extract('month', Reservation.date_reservation) == m).count()
         for m in range(1, 13)
     ]
 
-    # ----------------------
+    # ---------------------------
     # Top / faibles plats
-    # ----------------------
+    # ---------------------------
     top_plats = (
         db.session.query(
             Plat.nom,
@@ -74,19 +79,22 @@ def index():
         .all()
     )
 
-    # ----------------------
-    # Catégories faibles et Top catégories
-    # ----------------------
-    categories_query = db.session.query(
-        Categorie.nom,
-        func.count(Plat.id_plat).label('total_plats')
-    ).outerjoin(Plat, Categorie.categorie_id == Plat.categorie_id
-    ).group_by(Categorie.nom).all()
+    # ---------------------------
+    # Catégories et top catégories
+    # ---------------------------
+    categories_query = (
+        db.session.query(
+            Categorie.nom,
+            func.count(Plat.id_plat).label('total_plats')
+        )
+        .outerjoin(Plat, Categorie.categorie_id == Plat.categorie_id)
+        .group_by(Categorie.nom)
+        .all()
+    )
 
     categories_labels = [c.nom for c in categories_query]
     plats_par_categorie = [c.total_plats for c in categories_query]
 
-    # Pour Jinja2 : top_categories pour les graphiques
     top_categories = {
         'labels': categories_labels,
         'data': plats_par_categorie
@@ -94,9 +102,9 @@ def index():
 
     categories_faibles = sorted(categories_query, key=lambda x: x.total_plats)[:5]
 
-    # ----------------------
+    # ---------------------------
     # Analyse du potentiel client
-    # ----------------------
+    # ---------------------------
     clients_stats = (
         db.session.query(
             Client.id_client,
@@ -140,42 +148,33 @@ def index():
         .all()
     )
 
-    # ----------------------
+    # ---------------------------
     # Rendu du template
-    # ----------------------
+    # ---------------------------
     return render_template(
-        'dashboard.html',
-        nb_clients=nb_clients,
-        nb_plats=nb_plats,
-        nb_categories=nb_categories,
-        nb_reservations=nb_reservations,
-        nb_serv_items=nb_serv_items,
-        nb_clients_servis=nb_clients_servis,
-        derniers_clients=derniers_clients,
-        dernieres_reservations=dernieres_reservations,
-        mois_labels=mois_labels,
-        reservations_par_mois=reservations_par_mois,
-        top_plats=top_plats,
-        plats_faibles=plats_faibles,
-        categories_faibles=categories_faibles,
-        categories_labels=categories_labels,
-        plats_par_categorie=plats_par_categorie,
-        top_categories=top_categories,  # 👈 ajouté pour Jinja2
-        devise=devise,
-        symbole=symbole,
-        devises=DEVISES,
-        clients_stats=clients_stats,
-        clients_inactifs=clients_inactifs,
-        clients_sans_reservation=clients_sans_reservation
-    )
-
-
-@dashboard_bp.route('/')
-def dashboard_home():
-    # Rendu principal du dashboard
-    ...
-
-@dashboard_bp.route('/dashboard')
-def dashboard_all_reservations():
-    reservations = Reservation.query.order_by(Reservation.date_reservation.desc()).all()
-    return render_template('dashboard/dashboard.html', reservations=reservations)
+    "dashboard/index.html",
+    nb_clients=nb_clients,
+    nb_plats=nb_plats,
+    nb_categories=nb_categories,
+    nb_reservations=nb_reservations,
+    nb_serv_items=nb_serv_items,
+    nb_clients_servis=nb_clients_servis,
+    derniers_clients=derniers_clients,
+    dernieres_reservations=dernieres_reservations,
+    mois_labels=mois_labels,
+    reservations_par_mois=reservations_par_mois,
+    top_plats=top_plats,
+    plats_faibles=plats_faibles,
+    categories_faibles=categories_faibles,
+    categories_labels=categories_labels,
+    plats_par_categorie=plats_par_categorie,
+    top_categories=top_categories,
+    devise=devise,
+    symbole=symbole,
+    devises=DEVISES,
+    clients_stats=clients_stats,
+    clients_inactifs=clients_inactifs,
+    clients_sans_reservation=clients_sans_reservation
+    
+    
+)

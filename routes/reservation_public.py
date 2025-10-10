@@ -533,11 +533,12 @@ def liste_reservations():
 
 @reservation_public_bp.route('/reserver_table', methods=['POST'])
 def reserver_table():
-    if g.client is None:
-        return jsonify({"message": "Vous devez être connecté pour réserver.", "success": False})
+    client_id = session.get('client_id')
+    if not client_id:
+        flash("Vous devez être connecté pour réserver.", "warning")
+        return redirect(url_for('plats_public.afficher_menu'))
 
     try:
-        # Récupération des données
         nom = request.form.get('nom', '').strip()
         prenom = request.form.get('prenom', '').strip()
         email = request.form.get('email', '').strip()
@@ -548,16 +549,16 @@ def reserver_table():
 
         if not all([nom, email, tel, date_str, heure_str, personnes]):
             flash("Veuillez remplir tous les champs obligatoires.", "danger")
-            return redirect(url_for('dashboard.index'))
+            return redirect(url_for('reservation_public.mon_panier'))
 
         date_res = datetime.strptime(date_str, "%Y-%m-%d").date()
         heure_res = datetime.strptime(heure_str, "%H:%M").time()
 
-        # Vérifier disponibilité (max 10 tables)
+        # Vérifier disponibilité max 10 tables
         existing = Reservation.query.filter_by(date_reservation=date_res, heure_reservation=heure_res).count()
         if existing >= 10:
             flash("Désolé, aucune table disponible à cette heure.", "warning")
-            return redirect(url_for('dashboard.index'))
+            return redirect(url_for('reservation_public.mon_panier'))
 
         # Création réservation
         new_res = Reservation(
@@ -574,18 +575,17 @@ def reserver_table():
         db.session.add(new_res)
         db.session.commit()
 
-        # Générer PDF et envoyer email
+        # Générer PDF + envoyer email
         pdf_bytes = generer_pdf_ticket(new_res)
         envoyer_ticket_email(new_res, pdf_bytes)
 
         flash("Votre réservation a été enregistrée avec succès ! Un ticket vous a été envoyé par email.", "success")
-        return redirect(url_for('reservation_public_bp.ticket_view', reservation_id=new_res.id_reservation))
+        return redirect(url_for('reservation_public.ticket_view', reservation_id=new_res.id_reservation))
 
     except Exception as e:
         db.session.rollback()
-        print("Erreur réservation :", e)
         flash("Erreur lors de la réservation. Veuillez réessayer.", "danger")
-        return redirect(url_for('dashboard.index'))
+        return redirect(url_for('reservation_public.mon_panier'))
 
 
 # ---------------------------

@@ -13,7 +13,6 @@
     <link href="https://cdn.jsdelivr.net/npm/animate.css@4.1.1/animate.min.css" rel="stylesheet">
 
     <style>
-        /* Body & Layout */
         body {
             background: #f0f2f5;
             min-height: 100vh;
@@ -22,7 +21,6 @@
             font-family: 'Segoe UI', sans-serif;
         }
 
-        /* Sidebar */
         #sidebar {
             min-width: 220px;
             max-width: 220px;
@@ -56,7 +54,6 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
 
-        /* Main content */
         main {
             flex: 1;
             padding: 25px;
@@ -64,7 +61,6 @@
             transition: all 0.3s;
         }
 
-        /* Header / Breadcrumb */
         .page-header {
             background: rgba(255,255,255,0.95);
             padding: 25px;
@@ -77,7 +73,6 @@
             text-decoration: none;
         }
 
-        /* Cards */
         .card {
             border-radius: 1rem;
             box-shadow: 0 6px 15px rgba(0,0,0,0.1);
@@ -91,18 +86,15 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.15);
         }
 
-        /* Table hover */
         table.table-hover tbody tr:hover {
             background-color: rgba(13,110,253,0.1);
         }
 
-        /* Flash messages */
         .alert {
             border-radius: 0.5rem;
             box-shadow: 0 4px 15px rgba(0,0,0,0.08);
         }
 
-        /* Footer */
         footer {
             margin-top: 40px;
             padding: 20px 0;
@@ -113,7 +105,6 @@
             box-shadow: 0 -4px 15px rgba(0,0,0,0.1);
         }
 
-        /* Buttons gradient */
         .btn-gradient {
             background: linear-gradient(90deg, #0d6efd, #6610f2);
             color: #fff;
@@ -128,7 +119,6 @@
             transform: translateY(-2px);
         }
 
-        /* Responsive sidebar */
         @media (max-width: 991px) {
             #sidebar {
                 margin-left: -220px;
@@ -142,7 +132,6 @@
             }
         }
 
-        /* Sidebar toggle button */
         .sidebar-toggle {
             border: none;
         }
@@ -152,8 +141,8 @@
 
 <!-- Sidebar -->
 <nav id="sidebar" class="d-flex flex-column p-3 bg-dark vh-100 text-white">
-    <!-- Logo / Titre -->
-    <a href="{{ url_for('dashboard.index') }}" class="d-flex align-items-center mb-3 mb-md-0 text-white text-decoration-none">
+    <!-- Logo et nom de l'application -->
+    <a href="{{ url_for('index.dashboard_index') }}" class="d-flex align-items-center mb-3 mb-md-0 text-white text-decoration-none">
         <i class="bi bi-egg-fried fs-3 me-2"></i>
         <span class="fs-5 fw-bold">Restaurant App</span>
     </a>
@@ -162,94 +151,85 @@
     <!-- Menu principal -->
     <ul class="nav nav-pills flex-column mb-auto">
         <li class="nav-item">
-            <a href="{{ url_for('dashboard.index') }}" class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}">
+            <a href="{{ url_for('index.dashboard_index') }}" class="nav-link {% if request.endpoint == 'index.dashboard_index' %}active{% endif %}">
                 <i class="bi bi-speedometer2 me-2"></i> Tableau de bord
             </a>
         </li>
 
-        <!-- Clients -->
-        <li>
+        <li class="nav-item">
             <a href="{{ url_for('client.liste_client') }}" class="nav-link {% if request.endpoint.startswith('client') %}active{% endif %}">
                 <i class="bi bi-people-fill me-2"></i> Clients
             </a>
         </li>
 
-        <!-- Catégories -->
-        <li>
+        <li class="nav-item">
             <a href="{{ url_for('categorie.liste_categorie') }}" class="nav-link {% if request.endpoint.startswith('categorie') %}active{% endif %}">
                 <i class="bi bi-tags-fill me-2"></i> Catégories
             </a>
         </li>
 
-        <!-- Plats -->
-        <li>
+        <li class="nav-item">
             <a href="{{ url_for('plat.liste_plats') }}" class="nav-link {% if request.endpoint.startswith('plat') %}active{% endif %}">
                 <i class="bi bi-basket-fill me-2"></i> Plats
             </a>
         </li>
 
-        <!-- Plats réservés -->
-        <li>
+        <li class="nav-item">
             <a href="{{ url_for('reservation_items.list_reservation_items') }}" class="nav-link {% if request.endpoint.startswith('reservation_items') %}active{% endif %}">
                 <i class="bi bi-list-ul me-2"></i> Plats réservés
             </a>
         </li>
 
-        <!-- Clients servis -->
-        <li>
-            <a href="{{ url_for('reservation_public.clients_servis') }}" class="nav-link {% if request.endpoint.startswith('reservation_public.clients_servis') %}active{% endif %}">
+        <li class="nav-item">
+            <a href="{{ url_for('reservation_public.clients_servis') }}" class="nav-link {% if request.endpoint == 'reservation_public.clients_servis' %}active{% endif %}">
                 <i class="bi bi-check2-circle me-2"></i> Clients servis
             </a>
         </li>
 
-        <!-- Réservations -->
-        <li>
+        <li class="nav-item">
             <a href="{{ url_for('reservation.liste_reservations') }}" class="nav-link {% if request.endpoint.startswith('reservation') %}active{% endif %}">
                 <i class="bi bi-calendar-check-fill me-2"></i> Réservations
             </a>
         </li>
 
-        <!-- Scanner QR -->
-        <li>
-            <a href="{{ url_for('reservation_public.scanner_page') }}" class="nav-link {% if request.endpoint.startswith('reservation_public.scanner_page') %}active{% endif %}">
+        <li class="nav-item">
+            <a href="{{ url_for('reservation_public.scanner_page') }}" class="nav-link {% if request.endpoint == 'reservation_public.scanner_page' %}active{% endif %}">
                 <i class="bi bi-qr-code-scan me-2"></i> Scanner QR
             </a>
         </li>
 
-        <!-- Menu utilisateurs -->
-        <li>
-            <a href="{{ url_for('plats_public.afficher_menu') }}" class="nav-link {% if request.endpoint.startswith('plats_public.afficher_menu') %}active{% endif %}">
+        <li class="nav-item">
+            <a href="{{ url_for('plats_public.afficher_menu') }}" class="nav-link {% if request.endpoint == 'plats_public.afficher_menu' %}active{% endif %}">
                 <i class="bi bi-card-list me-2"></i> Menu utilisateurs
             </a>
         </li>
     </ul>
 
+    <!-- Footer de la sidebar -->
     <hr class="text-white mt-auto">
     <div class="text-center">
         <small>&copy; 2025 Restaurant App</small>
     </div>
 </nav>
 
-
-<!-- Main Content -->
-<main>
-    <!-- Toggle button for small screens -->
+<main class="ms-lg-250">
+    <!-- Bouton pour afficher/masquer la sidebar sur mobile -->
     <button class="btn btn-gradient d-lg-none mb-3 sidebar-toggle" id="sidebarToggle">
         <i class="bi bi-list"></i> Menu
     </button>
 
-    <!-- Page header / Breadcrumb -->
+    <!-- Header de la page -->
     <div class="page-header mb-4 animate__animated animate__fadeInDown">
         <h2 class="fw-bold mb-1">{% block page_title %}Dashboard{% endblock %}</h2>
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-0">
-                <li class="breadcrumb-item"><a href="{{ url_for('dashboard.index') }}">Accueil</a></li>
+                <li class="breadcrumb-item"><a href="{{ url_for('index.dashboard_index') }}">Accueil</a></li>
                 {% block breadcrumb %}{% endblock %}
             </ol>
         </nav>
     </div>
 
-    <!-- Flash messages -->
+
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
@@ -264,12 +244,10 @@
     {% block content %}{% endblock %}
 </main>
 
-<!-- Footer -->
 <footer>
     <p class="mb-0">&copy; 2025 - Restaurant App | Tous droits réservés</p>
 </footer>
 
-<!-- Scripts Bootstrap & Sidebar toggle -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script>
     const sidebarToggle = document.getElementById('sidebarToggle');
