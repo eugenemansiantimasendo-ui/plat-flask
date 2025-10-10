@@ -1,4 +1,5 @@
 import os
+import urllib.parse  # <-- pour encoder les caractères spéciaux dans le mot de passe
 from flask import Flask, render_template, redirect, url_for, request, flash, g, session
 from werkzeug.security import generate_password_hash
 from flask_mail import Message
@@ -32,9 +33,15 @@ def create_app():
     # -------------------------------
     # Configuration BDD et Mail
     # -------------------------------
+    db_user = "mansiantima"
+    db_password = urllib.parse.quote_plus("issaelde")  
+    db_host = "localhost"
+    db_port = "5432"
+    db_name = "db_reservation"
+
     app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
-        'SQLALCHEMY_DATABASE_URI',
-        'postgresql://mansiantima:issaelde@localhost:5432/db_reservation'
+        'DATABASE_URL',
+        f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
     )
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'super-secret-key')
@@ -217,11 +224,9 @@ def create_app():
 # -------------------------------
 app = create_app()
 
-
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()  # Création automatique des tables si elles n'existent pas
 
     port = int(os.environ.get("PORT", 5000))  # Port dynamique pour Render
     app.run(debug=False, host='0.0.0.0', port=port)
-
